@@ -8,8 +8,9 @@ const env = require('./src/config/env');
 const db = require('./src/config/db');
 const authRoutes = require('./src/routes/auth.routes');
 const userRoutes = require('./src/routes/user.routes');
+const roomRoutes = require('./src/routes/room.routes');
 const errorHandler = require('./src/middleware/error.middleware');
-const station = require('./src/services/station.service');
+const { roomManager } = require('./src/services/room.manager');
 const setupStationSockets = require('./src/sockets/station.socket');
 
 const app = express();
@@ -39,13 +40,14 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     uptime: process.uptime(),
     timestamp: Date.now(),
-    onlineListeners: station.getOnlineUserCount()
+    totalRooms: roomManager.rooms.size
   });
 });
 
 // REST API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // SPA Fallback to index.html for unknown GET requests
 app.get('*', (req, res, next) => {
@@ -61,11 +63,11 @@ app.use(errorHandler);
 // Attach Socket.IO Handlers
 setupStationSockets(io);
 
-// Start Server and Initialize Station
+// Start Server and Initialize Multi-Room Engine
 const PORT = env.PORT;
 server.listen(PORT, '0.0.0.0', async () => {
   console.log(`=================================================`);
-  console.log(`🎧 LOFI & CHILL RADIO LOUNGE (Production Ready)`);
+  console.log(`🎧 LOFI & CHILL RADIO LOUNGE (Multi-Room Production)`);
   console.log(`🚀 Server running on: http://0.0.0.0:${PORT}`);
   console.log(`📊 Health check: http://0.0.0.0:${PORT}/api/health`);
   console.log(`=================================================`);
@@ -73,7 +75,6 @@ server.listen(PORT, '0.0.0.0', async () => {
   // Verify and initialize Supabase PostgreSQL Database
   await db.initDatabase();
 
-  // Initialize Station music player
-  station.initStation();
+  // Initialize Multi-Room Engine from Supabase
+  await roomManager.initAllRooms(io);
 });
-

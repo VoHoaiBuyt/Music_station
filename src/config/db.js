@@ -7,8 +7,6 @@ const env = require('./env');
 const DEFAULT_SUPABASE_URL = 'postgresql://postgres.wyepnzrypnzopohprerv:Hoaibuyt05%40@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?schema=music_station_db';
 const connectionString = env.DIRECT_URL || env.DATABASE_URL || DEFAULT_SUPABASE_URL;
 
-console.log('⚡ Initializing Database Pool connection...');
-
 const pool = new Pool({
   connectionString,
   ssl: {
@@ -27,19 +25,15 @@ pool.on('error', (err) => {
 async function initDatabase() {
   let client;
   try {
-    console.log('⚡ Connecting to Supabase PostgreSQL...');
     client = await pool.connect();
-    console.log('⚡ Checking Supabase PostgreSQL schema (music_station_db)...');
-    
     const sqlPath = path.join(__dirname, '..', '..', 'prisma', 'init_supabase.sql');
     if (fs.existsSync(sqlPath)) {
       const sql = fs.readFileSync(sqlPath, 'utf8');
       await client.query(sql);
-      console.log('✅ Supabase PostgreSQL tables verified & ready in schema: music_station_db!');
+      console.log('✅ Supabase PostgreSQL tables & rooms verified in schema: music_station_db!');
     }
   } catch (err) {
     console.warn('⚠️ Notice during database schema verification:', err.message);
-    console.warn('👉 Note: Please make sure DATABASE_URL is set in Railway Variables.');
   } finally {
     if (client) client.release();
   }
@@ -135,6 +129,119 @@ const db = {
     return res.rows[0] || null;
   },
 
+  // --- Rooms Management (Multi-Room Architecture) ---
+  async getAllRooms() {
+    try {
+      const res = await pool.query(
+        `SELECT id, slug, name, description, genre, "coverUrl", "isPrivate", "creatorId", "creatorName", "currentTrack", queue, "isDefault", "createdAt"
+         FROM music_station_db.rooms
+         ORDER BY "isDefault" DESC, "createdAt" ASC`
+      );
+      return res.rows;
+    } catch (err) {
+      console.error('[DB getAllRooms error]:', err.message);
+      return [];
+    }
+  },
+
+  async getRoomBySlug(slug) {
+    try {
+      const res = await pool.query(
+        `SELECT id, slug, name, description, genre, "coverUrl", "isPrivate", "passwordHash", "creatorId", "creatorName", "currentTrack", queue, "isDefault", "createdAt"
+         FROM music_station_db.rooms
+         WHERE slug = $1`,
+        [slug]
+      );
+      return res.rows[0] || null;
+    } catch (err) {
+      console.error('[DB getRoomBySlug error]:', err.message);
+      return null;
+    }
+  },
+
+  async createRoom({ slug, name, description, genre, coverUrl, isPrivate = false, passwordHash = null, creatorId = null, creatorName = 'User' }) {
+    const res = await pool.query(
+      `INSERT INTO music_station_db.rooms (slug, name, description, genre, "coverUrl", "isPrivate", "passwordHash", "creatorId", "creatorName")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, slug, name, description, genre, "coverUrl", "isPrivate", "creatorId", "creatorName", "createdAt"`,
+      [
+        slug,
+        name.trim(),
+        description || '',
+        genre ? genre.trim() : 'Lofi & Chill',
+        coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80',
+        !!isPrivate,
+        passwordHash,
+        creatorId,
+        creatorName
+      ]
+    );
+    return res.rows[0];
+  },
+
+  async updateRoom(slug, fields = {}) {
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (fields.name) {
+      updates.push(`name = $${idx++}`);
+      values.push(fields.name.trim());
+    }
+    if (fields.description !== undefined) {
+      updates.push(`description = $${idx++}`);
+      values.push(fields.description);
+    }
+    if (fields.genre) {
+      updates.push(`genre = $${idx++}`);
+      values.push(fields.genre.trim());
+    }
+    if (fields.coverUrl) {
+      updates.push(`"coverUrl" = $${idx++}`);
+      values.push(fields.coverUrl);
+    }
+    if (fields.currentTrack !== undefined) {
+      updates.push(`"currentTrack" = $${idx++}`);
+      values.push(JSON.stringify(fields.currentTrack));
+    }
+    if (fields.queue !== undefined) {
+      updates.push(`queue = $${idx++}`);
+      values.push(JSON.stringify(fields.queue));
+    }
+    updates.push(`"updatedAt" = CURRENT_TIMESTAMP`);
+
+    values.push(slug);
+    const sql = `UPDATE music_station_db.rooms SET ${updates.join(', ')} WHERE slug = $${idx} RETURNING *`;
+    const res = await pool.query(sql, values);
+    return res.rows[0] || null;
+  },
+
+  async saveRoomState(slug, currentTrack, queue) {
+    try {
+      await pool.query(
+        `UPDATE music_station_db.rooms 
+         SET "currentTrack" = $1, queue = $2, "updatedAt" = CURRENT_TIMESTAMP 
+         WHERE slug = $3`,
+        [JSON.stringify(currentTrack), JSON.stringify(queue || []), slug]
+      );
+    } catch (err) {
+      console.warn(`[DB saveRoomState error for ${slug}]:`, err.message);
+    }
+  },
+
+  async deleteRoom(slug, userId, userRole) {
+    let sql = `DELETE FROM music_station_db.rooms WHERE slug = $1 AND "isDefault" = false`;
+    const values = [slug];
+
+    if (userRole !== 'ADMIN') {
+      sql += ` AND "creatorId" = $2`;
+      values.push(userId);
+    }
+
+    const res = await pool.query(sql, values);
+    return res.rowCount > 0;
+  },
+
   // --- Favorites ---
   async getFavorites(userId) {
     try {
@@ -171,17 +278,18 @@ const db = {
     return { success: true };
   },
 
-  // --- Song History ---
-  async addSongHistory(track) {
+  // --- Song History (Per Room) ---
+  async addSongHistory(roomSlug, track) {
     try {
       const isUUID = track.requestedById && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(track.requestedById);
       const validUserId = isUUID ? track.requestedById : null;
 
       const res = await pool.query(
-        `INSERT INTO music_station_db.song_history ("videoId", title, author, thumbnail, duration, "requestedById", "requestedByName", "isDefault")
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO music_station_db.song_history ("roomSlug", "videoId", title, author, thumbnail, duration, "requestedById", "requestedByName", "isDefault")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
         [
+          roomSlug || 'lofi-chill-study',
           track.videoId,
           track.title,
           track.author || 'Unknown Artist',
@@ -209,14 +317,15 @@ const db = {
     }
   },
 
-  async getSongHistory(limit = 30) {
+  async getSongHistory(roomSlug = 'lofi-chill-study', limit = 30) {
     try {
       const res = await pool.query(
-        `SELECT id, "videoId", title, author, thumbnail, duration, "requestedByName", "isDefault", "playedAt"
+        `SELECT id, "roomSlug", "videoId", title, author, thumbnail, duration, "requestedByName", "isDefault", "playedAt"
          FROM music_station_db.song_history
+         WHERE "roomSlug" = $1
          ORDER BY "playedAt" DESC
-         LIMIT $1`,
-        [limit]
+         LIMIT $2`,
+        [roomSlug, limit]
       );
       return res.rows;
     } catch (err) {
@@ -225,17 +334,17 @@ const db = {
     }
   },
 
-  // --- Chat Messages ---
-  async addChatMessage(msg) {
+  // --- Chat Messages (Per Room) ---
+  async addChatMessage(roomSlug, msg) {
     try {
       const isUUID = msg.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msg.userId);
       const validUserId = isUUID ? msg.userId : null;
 
       await pool.query(
-        `INSERT INTO music_station_db.chat_messages (id, "userId", username, avatar, text, type)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO music_station_db.chat_messages (id, "roomSlug", "userId", username, avatar, role, text, type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (id) DO NOTHING`,
-        [msg.id, validUserId, msg.username, msg.avatar || '🎧', msg.text, msg.type || 'user']
+        [msg.id, roomSlug || 'lofi-chill-study', validUserId, msg.username, msg.avatar || '🎧', msg.role || 'USER', msg.text, msg.type || 'user']
       );
 
       if (validUserId) {
@@ -249,14 +358,15 @@ const db = {
     }
   },
 
-  async getRecentChat(limit = 30) {
+  async getRecentChat(roomSlug = 'lofi-chill-study', limit = 30) {
     try {
       const res = await pool.query(
-        `SELECT id, "userId", username, avatar, text, type, "createdAt"
+        `SELECT id, "roomSlug", "userId", username, avatar, role, text, type, "createdAt"
          FROM music_station_db.chat_messages
+         WHERE "roomSlug" = $1
          ORDER BY "createdAt" DESC
-         LIMIT $1`,
-        [limit]
+         LIMIT $2`,
+        [roomSlug, limit]
       );
       return res.rows.reverse();
     } catch (err) {

@@ -13,7 +13,8 @@ async function authenticateToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET);
-    const user = await db.findUserById(decoded.userId);
+    const userId = decoded.userId || decoded.id;
+    const user = await db.findUserById(userId);
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Tài khoản không tồn tại hoặc đã bị xoá.' });
@@ -42,7 +43,8 @@ async function optionalAuth(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET);
-    const user = await db.findUserById(decoded.userId);
+    const userId = decoded.userId || decoded.id;
+    const user = await db.findUserById(userId);
 
     if (user && !user.isBanned) {
       req.user = user;
@@ -73,6 +75,7 @@ function requireRole(allowedRoles = []) {
 
 module.exports = {
   authenticateToken,
+  requireAuth: authenticateToken,
   optionalAuth,
   requireRole
 };
