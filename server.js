@@ -63,11 +63,11 @@ setupStationSockets(io);
 
 // Start Server and Initialize Station
 const PORT = env.PORT;
-server.listen(PORT, async () => {
+server.listen(PORT, '0.0.0.0', async () => {
   console.log(`=================================================`);
   console.log(`🎧 LOFI & CHILL RADIO LOUNGE (Production Ready)`);
-  console.log(`🚀 Server running on: http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🚀 Server running on: http://0.0.0.0:${PORT}`);
+  console.log(`📊 Health check: http://0.0.0.0:${PORT}/api/health`);
   console.log(`=================================================`);
 
   // Verify and initialize Supabase PostgreSQL Database
@@ -76,3 +76,4 @@ server.listen(PORT, async () => {
   // Initialize Station music player
   station.initStation();
 });
+

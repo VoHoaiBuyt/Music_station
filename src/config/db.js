@@ -3,7 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const env = require('./env');
 
-const connectionString = env.DIRECT_URL || env.DATABASE_URL;
+// Supabase fallback URL if not configured in environment variables
+const DEFAULT_SUPABASE_URL = 'postgresql://postgres.wyepnzrypnzopohprerv:Hoaibuyt05%40@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?schema=music_station_db';
+const connectionString = env.DIRECT_URL || env.DATABASE_URL || DEFAULT_SUPABASE_URL;
+
+console.log('⚡ Initializing Database Pool connection...');
 
 const pool = new Pool({
   connectionString,
@@ -21,9 +25,12 @@ pool.on('error', (err) => {
 
 // Initialize database schema automatically on startup
 async function initDatabase() {
-  const client = await pool.connect();
+  let client;
   try {
+    console.log('⚡ Connecting to Supabase PostgreSQL...');
+    client = await pool.connect();
     console.log('⚡ Checking Supabase PostgreSQL schema (music_station_db)...');
+    
     const sqlPath = path.join(__dirname, '..', '..', 'prisma', 'init_supabase.sql');
     if (fs.existsSync(sqlPath)) {
       const sql = fs.readFileSync(sqlPath, 'utf8');
@@ -32,8 +39,9 @@ async function initDatabase() {
     }
   } catch (err) {
     console.warn('⚠️ Notice during database schema verification:', err.message);
+    console.warn('👉 Note: Please make sure DATABASE_URL is set in Railway Variables.');
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -45,32 +53,47 @@ const db = {
 
   // --- Users ---
   async findUserById(id) {
-    const res = await pool.query(
-      `SELECT id, username, email, avatar, role, level, xp, "totalRequests", "isBanned", "createdAt" 
-       FROM music_station_db.users WHERE id = $1`,
-      [id]
-    );
-    return res.rows[0] || null;
+    try {
+      const res = await pool.query(
+        `SELECT id, username, email, avatar, role, level, xp, "totalRequests", "isBanned", "createdAt" 
+         FROM music_station_db.users WHERE id = $1`,
+        [id]
+      );
+      return res.rows[0] || null;
+    } catch (err) {
+      console.error('[DB findUserById error]:', err.message);
+      return null;
+    }
   },
 
   async findUserByLogin(login) {
-    const clean = login.trim().toLowerCase();
-    const res = await pool.query(
-      `SELECT id, username, email, "passwordHash", avatar, role, level, xp, "totalRequests", "isBanned", "createdAt"
-       FROM music_station_db.users 
-       WHERE LOWER(email) = $1 OR LOWER(username) = $1`,
-      [clean]
-    );
-    return res.rows[0] || null;
+    try {
+      const clean = login.trim().toLowerCase();
+      const res = await pool.query(
+        `SELECT id, username, email, "passwordHash", avatar, role, level, xp, "totalRequests", "isBanned", "createdAt"
+         FROM music_station_db.users 
+         WHERE LOWER(email) = $1 OR LOWER(username) = $1`,
+        [clean]
+      );
+      return res.rows[0] || null;
+    } catch (err) {
+      console.error('[DB findUserByLogin error]:', err.message);
+      return null;
+    }
   },
 
   async findUserByUsernameOrEmail(username, email) {
-    const res = await pool.query(
-      `SELECT id, username, email FROM music_station_db.users 
-       WHERE LOWER(username) = $1 OR LOWER(email) = $2`,
-      [username.trim().toLowerCase(), email.trim().toLowerCase()]
-    );
-    return res.rows[0] || null;
+    try {
+      const res = await pool.query(
+        `SELECT id, username, email FROM music_station_db.users 
+         WHERE LOWER(username) = $1 OR LOWER(email) = $2`,
+        [username.trim().toLowerCase(), email.trim().toLowerCase()]
+      );
+      return res.rows[0] || null;
+    } catch (err) {
+      console.error('[DB findUserByUsernameOrEmail error]:', err.message);
+      return null;
+    }
   },
 
   async createUser({ username, email, passwordHash, avatar, role = 'USER' }) {
@@ -114,14 +137,19 @@ const db = {
 
   // --- Favorites ---
   async getFavorites(userId) {
-    const res = await pool.query(
-      `SELECT id, "videoId", title, author, thumbnail, duration, "createdAt"
-       FROM music_station_db.favorites
-       WHERE "userId" = $1
-       ORDER BY "createdAt" DESC`,
-      [userId]
-    );
-    return res.rows;
+    try {
+      const res = await pool.query(
+        `SELECT id, "videoId", title, author, thumbnail, duration, "createdAt"
+         FROM music_station_db.favorites
+         WHERE "userId" = $1
+         ORDER BY "createdAt" DESC`,
+        [userId]
+      );
+      return res.rows;
+    } catch (err) {
+      console.error('[DB getFavorites error]:', err.message);
+      return [];
+    }
   },
 
   async addFavorite(userId, { videoId, title, author, thumbnail, duration }) {
@@ -145,89 +173,113 @@ const db = {
 
   // --- Song History ---
   async addSongHistory(track) {
-    const isUUID = track.requestedById && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(track.requestedById);
-    const validUserId = isUUID ? track.requestedById : null;
+    try {
+      const isUUID = track.requestedById && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(track.requestedById);
+      const validUserId = isUUID ? track.requestedById : null;
 
-    const res = await pool.query(
-      `INSERT INTO music_station_db.song_history ("videoId", title, author, thumbnail, duration, "requestedById", "requestedByName", "isDefault")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id`,
-      [
-        track.videoId,
-        track.title,
-        track.author || 'Unknown Artist',
-        track.thumbnail || `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`,
-        track.duration || 0,
-        validUserId,
-        track.requestedBy || 'Station Radio',
-        !!track.isDefault
-      ]
-    );
+      const res = await pool.query(
+        `INSERT INTO music_station_db.song_history ("videoId", title, author, thumbnail, duration, "requestedById", "requestedByName", "isDefault")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          track.videoId,
+          track.title,
+          track.author || 'Unknown Artist',
+          track.thumbnail || `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`,
+          track.duration || 0,
+          validUserId,
+          track.requestedBy || 'Station Radio',
+          !!track.isDefault
+        ]
+      );
 
-    if (validUserId) {
-      await pool.query(
-        `UPDATE music_station_db.users 
-         SET "totalRequests" = "totalRequests" + 1, xp = xp + 25 
-         WHERE id = $1`,
-        [validUserId]
-      ).catch(() => {});
+      if (validUserId) {
+        await pool.query(
+          `UPDATE music_station_db.users 
+           SET "totalRequests" = "totalRequests" + 1, xp = xp + 25 
+           WHERE id = $1`,
+          [validUserId]
+        ).catch(() => {});
+      }
+
+      return res.rows[0];
+    } catch (err) {
+      console.warn('[DB addSongHistory error]:', err.message);
+      return null;
     }
-
-    return res.rows[0];
   },
 
   async getSongHistory(limit = 30) {
-    const res = await pool.query(
-      `SELECT id, "videoId", title, author, thumbnail, duration, "requestedByName", "isDefault", "playedAt"
-       FROM music_station_db.song_history
-       ORDER BY "playedAt" DESC
-       LIMIT $1`,
-      [limit]
-    );
-    return res.rows;
+    try {
+      const res = await pool.query(
+        `SELECT id, "videoId", title, author, thumbnail, duration, "requestedByName", "isDefault", "playedAt"
+         FROM music_station_db.song_history
+         ORDER BY "playedAt" DESC
+         LIMIT $1`,
+        [limit]
+      );
+      return res.rows;
+    } catch (err) {
+      console.error('[DB getSongHistory error]:', err.message);
+      return [];
+    }
   },
 
   // --- Chat Messages ---
   async addChatMessage(msg) {
-    const isUUID = msg.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msg.userId);
-    const validUserId = isUUID ? msg.userId : null;
+    try {
+      const isUUID = msg.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msg.userId);
+      const validUserId = isUUID ? msg.userId : null;
 
-    await pool.query(
-      `INSERT INTO music_station_db.chat_messages (id, "userId", username, avatar, text, type)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (id) DO NOTHING`,
-      [msg.id, validUserId, msg.username, msg.avatar || '🎧', msg.text, msg.type || 'user']
-    );
-
-    if (validUserId) {
       await pool.query(
-        `UPDATE music_station_db.users SET xp = xp + 2 WHERE id = $1`,
-        [validUserId]
-      ).catch(() => {});
+        `INSERT INTO music_station_db.chat_messages (id, "userId", username, avatar, text, type)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO NOTHING`,
+        [msg.id, validUserId, msg.username, msg.avatar || '🎧', msg.text, msg.type || 'user']
+      );
+
+      if (validUserId) {
+        await pool.query(
+          `UPDATE music_station_db.users SET xp = xp + 2 WHERE id = $1`,
+          [validUserId]
+        ).catch(() => {});
+      }
+    } catch (err) {
+      console.warn('[DB addChatMessage error]:', err.message);
     }
   },
 
   async getRecentChat(limit = 30) {
-    const res = await pool.query(
-      `SELECT id, "userId", username, avatar, text, type, "createdAt"
-       FROM music_station_db.chat_messages
-       ORDER BY "createdAt" DESC
-       LIMIT $1`,
-      [limit]
-    );
-    return res.rows.reverse();
+    try {
+      const res = await pool.query(
+        `SELECT id, "userId", username, avatar, text, type, "createdAt"
+         FROM music_station_db.chat_messages
+         ORDER BY "createdAt" DESC
+         LIMIT $1`,
+        [limit]
+      );
+      return res.rows.reverse();
+    } catch (err) {
+      console.warn('[DB getRecentChat error]:', err.message);
+      return [];
+    }
   },
 
   // --- Leaderboard ---
   async getLeaderboard(limit = 10) {
-    const res = await pool.query(
-      `SELECT id, username, avatar, role, level, xp, "totalRequests"
-       FROM music_station_db.users
-       ORDER BY "totalRequests" DESC, xp DESC
-       LIMIT $1`,
-      [limit]
-    );
-    return res.rows;
+    try {
+      const res = await pool.query(
+        `SELECT id, username, avatar, role, level, xp, "totalRequests"
+         FROM music_station_db.users
+         ORDER BY "totalRequests" DESC, xp DESC
+         LIMIT $1`,
+        [limit]
+      );
+      return res.rows;
+    } catch (err) {
+      console.error('[DB getLeaderboard error]:', err.message);
+      return [];
+    }
   }
 };
 
