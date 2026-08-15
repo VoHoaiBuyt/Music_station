@@ -109,7 +109,12 @@ VALUES
   ('anime-ghibli-memories', '🌸 Studio Ghibli & Anime Piano', 'Hồi ức tuổi thơ qua những khúc dương cầm anime kinh điển.', 'Anime & Piano', 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&q=80', 'Station Master', true)
 ON CONFLICT (slug) DO NOTHING;
 
--- 9. Indexes for performance
+-- 9. Seed Super Admin User
+INSERT INTO music_station_db.users (username, email, "passwordHash", avatar, role, level, xp)
+VALUES ('admin', 'admin@lofilounge.com', '$2a$10$WjE1r9w.m.V4fK7L2kF2u.z9Y9A8B7C6D5E4F3G2H1I0J9K8L7M6N', '👑', 'ADMIN', 99, 9999)
+ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', avatar = '👑', level = 99;
+
+-- 10. Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_rooms_slug ON music_station_db.rooms(slug);
 CREATE INDEX IF NOT EXISTS idx_rooms_genre ON music_station_db.rooms(genre);
 CREATE INDEX IF NOT EXISTS idx_users_username ON music_station_db.users(username);

@@ -154,7 +154,23 @@ function setupStationSockets(io) {
 
       try {
         const meta = await fetchYouTubeMetadata(videoId);
-        const duration = parseInt(data?.duration, 10) || 240;
+        let duration = parseInt(data?.duration, 10) || 240;
+
+        // Role-based duration limits (Standard: 10m, VIP: 15m, Admin: 60m)
+        let maxAllowedDuration = env.MAX_SONG_DURATION_SEC;
+        if (user.role === 'ADMIN') {
+          maxAllowedDuration = env.ADMIN_MAX_SONG_DURATION_SEC;
+        } else if (user.role === 'VIP' || user.role === 'DJ') {
+          maxAllowedDuration = env.VIP_MAX_SONG_DURATION_SEC;
+        }
+
+        if (duration > maxAllowedDuration) {
+          const maxMins = Math.floor(maxAllowedDuration / 60);
+          socket.emit('queue_error', {
+            message: `Thời lượng bài hát vượt quá giới hạn cho phép (tối đa ${maxMins} phút)!`
+          });
+          return;
+        }
 
         const newTrack = {
           id: 'trk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -162,7 +178,7 @@ function setupStationSockets(io) {
           title: meta.title,
           author: meta.author,
           thumbnail: meta.thumbnail,
-          duration: Math.min(900, Math.max(30, duration)),
+          duration: Math.min(maxAllowedDuration, Math.max(30, duration)),
           requestedBy: user.username,
           requestedById: user.isGuest ? null : user.id,
           requestedByRole: user.role,
@@ -171,6 +187,7 @@ function setupStationSockets(io) {
 
         room.queue.push(newTrack);
         room.applyUserCooldown(user.id, user.role);
+
 
         // PERSISTENCE: Save updated queue to Supabase
         db.saveRoomState(room.slug, room.currentTrack, room.queue);
