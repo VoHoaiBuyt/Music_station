@@ -1740,39 +1740,7 @@ body {
   width: 100%;
 }
 
-.preset-suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
-.preset-label {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.preset-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.preset-tag {
-  padding: 4px 10px;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  color: var(--text-secondary);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.preset-tag:hover {
-  background: var(--accent-primary);
-  color: white;
-  border-color: transparent;
-}
 
 .btn-submit-add {
   padding: 10px;

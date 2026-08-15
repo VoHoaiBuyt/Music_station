@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS music_station_db.favorites (
 -- 6. Create Song History Table
 CREATE TABLE IF NOT EXISTS music_station_db.song_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "roomSlug" VARCHAR(120) DEFAULT 'lofi-chill-study',
+    "roomSlug" VARCHAR(120) DEFAULT 'main-lofi-lounge',
     "videoId" VARCHAR(50) NOT NULL,
     title VARCHAR(300) NOT NULL,
     author VARCHAR(150),
@@ -81,12 +81,12 @@ CREATE TABLE IF NOT EXISTS music_station_db.song_history (
 );
 
 -- Add roomSlug column if table existed previously
-ALTER TABLE music_station_db.song_history ADD COLUMN IF NOT EXISTS "roomSlug" VARCHAR(120) DEFAULT 'lofi-chill-study';
+ALTER TABLE music_station_db.song_history ADD COLUMN IF NOT EXISTS "roomSlug" VARCHAR(120) DEFAULT 'main-lofi-lounge';
 
 -- 7. Create Chat Messages Table
 CREATE TABLE IF NOT EXISTS music_station_db.chat_messages (
     id VARCHAR(100) PRIMARY KEY,
-    "roomSlug" VARCHAR(120) DEFAULT 'lofi-chill-study',
+    "roomSlug" VARCHAR(120) DEFAULT 'main-lofi-lounge',
     "userId" UUID REFERENCES music_station_db.users(id) ON DELETE SET NULL,
     username VARCHAR(50) NOT NULL,
     avatar VARCHAR(50) DEFAULT '🎧',
@@ -97,16 +97,13 @@ CREATE TABLE IF NOT EXISTS music_station_db.chat_messages (
 );
 
 -- Add roomSlug and role columns if table existed previously
-ALTER TABLE music_station_db.chat_messages ADD COLUMN IF NOT EXISTS "roomSlug" VARCHAR(120) DEFAULT 'lofi-chill-study';
+ALTER TABLE music_station_db.chat_messages ADD COLUMN IF NOT EXISTS "roomSlug" VARCHAR(120) DEFAULT 'main-lofi-lounge';
 ALTER TABLE music_station_db.chat_messages ADD COLUMN IF NOT EXISTS role VARCHAR(30) DEFAULT 'USER';
 
--- 8. Seed Default Featured Rooms if empty
+-- 8. Seed Default Main Room if empty
 INSERT INTO music_station_db.rooms (slug, name, description, genre, "coverUrl", "creatorName", "isDefault")
 VALUES 
-  ('lofi-chill-study', '📚 Lofi Study & Relax Beats', 'Không gian giai điệu êm dịu, nhẹ nhàng cho học tập và thư giãn.', 'Lofi & Chill', 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80', 'Station Master', true),
-  ('tokyo-night-drive', '🌃 Tokyo Night Citypop & Synth', 'Chuyến xe đêm qua lòng thành phố với giai điệu Future Funk và Synthwave.', 'Cyberpunk & Synth', 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=600&q=80', 'Station Master', true),
-  ('coffee-shop-vibes', '☕ Coffee Shop Acoustic & Jazz', 'Cà phê chiều mưa cùng những bản acoustic mộc mạc và jazz êm dịu.', 'Coffee & Acoustic', 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&q=80', 'Station Master', true),
-  ('anime-ghibli-memories', '🌸 Studio Ghibli & Anime Piano', 'Hồi ức tuổi thơ qua những khúc dương cầm anime kinh điển.', 'Anime & Piano', 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&q=80', 'Station Master', true)
+  ('main-lofi-lounge', '🎧 Sảnh Lofi & Chill Chính', 'Không gian âm nhạc trực tuyến kết nối mọi người.', 'Lofi & Chill', 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80', 'Station Master', true)
 ON CONFLICT (slug) DO NOTHING;
 
 -- 9. Seed Super Admin User
