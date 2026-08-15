@@ -1,36 +1,21 @@
-# Stage 1: Build & Dependencies
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package manifests and prisma schema
+# Copy package manifests
 COPY package*.json ./
-COPY prisma ./prisma/
 
-# Install dependencies and generate Prisma Client
-RUN npm ci
-RUN npx prisma generate
+# Install production dependencies
+RUN npm install --omit=dev
 
-# Copy source code
+# Copy application source
 COPY . .
 
-# Stage 2: Runner (Lightweight Production Image)
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
+# Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy node_modules and built assets
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/server.js ./server.js
-
 EXPOSE 3000
 
-# Command to run database migrations and start server
-CMD ["sh", "-c", "npx prisma db push && node server.js"]
+# Start the music station server
+CMD ["node", "server.js"]
