@@ -129,6 +129,41 @@ const db = {
     return res.rows[0] || null;
   },
 
+  // --- Admin User Management ---
+  async getAllUsersForAdmin() {
+    try {
+      const res = await pool.query(
+        `SELECT id, username, email, avatar, role, level, xp, "totalRequests", "isBanned", "createdAt"
+         FROM music_station_db.users
+         ORDER BY "createdAt" DESC`
+      );
+      return res.rows;
+    } catch (err) {
+      console.error('[DB getAllUsersForAdmin error]:', err.message);
+      return [];
+    }
+  },
+
+  async setUserBanStatus(userId, isBanned) {
+    const res = await pool.query(
+      `UPDATE music_station_db.users 
+       SET "isBanned" = $1, "updatedAt" = CURRENT_TIMESTAMP 
+       WHERE id = $2 AND role != 'ADMIN' 
+       RETURNING id, username, email, "isBanned", role`,
+      [!!isBanned, userId]
+    );
+    return res.rows[0] || null;
+  },
+
+  async deleteUser(userId) {
+    const res = await pool.query(
+      `DELETE FROM music_station_db.users 
+       WHERE id = $1 AND role != 'ADMIN'`,
+      [userId]
+    );
+    return res.rowCount > 0;
+  },
+
   // --- Rooms Management (Multi-Room Architecture) ---
   async getAllRooms() {
     try {

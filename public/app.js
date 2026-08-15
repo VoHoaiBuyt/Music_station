@@ -194,6 +194,14 @@ const DOM = {
   modalLeaderboardList: document.getElementById('modalLeaderboardList'),
   btnLogout: document.getElementById('btnLogout'),
 
+  // Modals: Admin Control Panel
+  btnOpenAdminPanel: document.getElementById('btnOpenAdminPanel'),
+  adminModal: document.getElementById('adminModal'),
+  btnCloseAdminModal: document.getElementById('btnCloseAdminModal'),
+  adminUserSearchInput: document.getElementById('adminUserSearchInput'),
+  btnRefreshAdminUsers: document.getElementById('btnRefreshAdminUsers'),
+  adminUsersList: document.getElementById('adminUsersList'),
+
   // Toast
   toastContainer: document.getElementById('toastContainer')
 };
@@ -407,11 +415,19 @@ function updateHeaderUserUI(user) {
     DOM.headerRoleBadge.className = `role-badge ${user.role || 'USER'}`;
     DOM.headerLevelTag.textContent = `Lv. ${user.level || 1}`;
 
+    // Show Admin trigger if role is ADMIN
+    if (DOM.btnOpenAdminPanel) {
+      DOM.btnOpenAdminPanel.style.display = (user.role === 'ADMIN') ? 'flex' : 'none';
+    }
+
     DOM.favGuestNotice.style.display = 'none';
     loadUserFavorites();
   } else {
     DOM.btnOpenAuthModal.style.display = 'flex';
     DOM.profileBtn.style.display = 'none';
+    if (DOM.btnOpenAdminPanel) {
+      DOM.btnOpenAdminPanel.style.display = 'none';
+    }
     DOM.favGuestNotice.style.display = 'flex';
     DOM.favoritesList.innerHTML = '';
     DOM.favTotalCount.textContent = '0 bài';
@@ -424,6 +440,7 @@ function logoutUser(notify = true) {
   appState.currentUser = null;
   updateHeaderUserUI(null);
   DOM.profileModal.style.display = 'none';
+  if (DOM.adminModal) DOM.adminModal.style.display = 'none';
 
   if (socket) {
     socket.disconnect();
@@ -1427,6 +1444,173 @@ function setupEventListeners() {
 
   DOM.btnLogout.addEventListener('click', () => {
     logoutUser(true);
+  });
+
+  // ==========================================
+  // Modal: Admin Control Panel Handlers
+  // ==========================================
+  if (DOM.btnOpenAdminPanel) {
+    DOM.btnOpenAdminPanel.addEventListener('click', () => {
+      DOM.adminModal.style.display = 'flex';
+      loadAdminUsers();
+    });
+  }
+
+  if (DOM.btnCloseAdminModal) {
+    DOM.btnCloseAdminModal.addEventListener('click', () => {
+      DOM.adminModal.style.display = 'none';
+    });
+  }
+
+  if (DOM.btnRefreshAdminUsers) {
+    DOM.btnRefreshAdminUsers.addEventListener('click', () => {
+      loadAdminUsers();
+      showToast('🔄 Đã làm mới danh sách thành viên!', 'info');
+    });
+  }
+
+  if (DOM.adminUserSearchInput) {
+    DOM.adminUserSearchInput.addEventListener('input', () => {
+      renderAdminUsers();
+    });
+  }
+}
+
+// ==========================================
+// Admin Control Panel Logic (Ban / Delete)
+// ==========================================
+let adminUsersData = [];
+
+async function loadAdminUsers() {
+  if (!appState.currentUser || appState.currentUser.role !== 'ADMIN') return;
+  try {
+    const res = await apiRequest('/api/admin/users');
+    if (res.success && Array.isArray(res.data)) {
+      adminUsersData = res.data;
+      renderAdminUsers();
+    }
+  } catch (err) {
+    showToast(`⚠️ ${err.message}`, 'error');
+  }
+}
+
+function renderAdminUsers() {
+  if (!DOM.adminUsersList) return;
+  const list = DOM.adminUsersList;
+  list.innerHTML = '';
+
+  let filtered = adminUsersData;
+  const q = (DOM.adminUserSearchInput && DOM.adminUserSearchInput.value || '').trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(u => 
+      (u.username && u.username.toLowerCase().includes(q)) || 
+      (u.email && u.email.toLowerCase().includes(q)) || 
+      (u.role && u.role.toLowerCase().includes(q))
+    );
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+        <i class="ph ph-user-circle" style="font-size: 36px; margin-bottom: 8px; display: block;"></i>
+        <p>Không tìm thấy người dùng nào phù hợp</p>
+      </div>
+    `;
+    return;
+  }
+
+  filtered.forEach(u => {
+    const row = document.createElement('div');
+    row.className = `admin-user-row ${u.isBanned ? 'banned' : ''}`;
+    
+    const isSelf = (appState.currentUser && appState.currentUser.id === u.id);
+    const isSuperAdmin = (u.role === 'ADMIN');
+
+    row.innerHTML = `
+      <div class="admin-user-main-info">
+        <div class="admin-user-avatar">${escapeHtml(u.avatar || '🎧')}</div>
+        <div class="admin-user-meta">
+          <div class="admin-user-name-line">
+            <span class="admin-user-name">${escapeHtml(u.username)}</span>
+            <span class="role-badge ${escapeHtml(u.role || 'USER')}">${escapeHtml(u.role || 'USER')}</span>
+            <span class="level-tag">Lv. ${u.level || 1}</span>
+          </div>
+          <div class="admin-user-email">${escapeHtml(u.email)}</div>
+          <div class="admin-user-stats-pill">🎵 ${u.totalRequests || 0} bài đã yêu cầu • ⚡ ${u.xp || 0} XP</div>
+        </div>
+      </div>
+
+      <div class="admin-user-status-col">
+        <span class="admin-status-badge ${u.isBanned ? 'banned' : 'active'}">
+          ${u.isBanned ? '⛔ ĐÃ BỊ KHOÁ' : '🟢 Hoạt động'}
+        </span>
+        <div class="admin-user-actions">
+          ${(!isSuperAdmin && !isSelf) ? `
+            <button class="${u.isBanned ? 'btn-admin-unban' : 'btn-admin-ban'}" data-uid="${escapeHtml(u.id)}" data-banned="${u.isBanned ? 'true' : 'false'}">
+              <i class="ph-bold ${u.isBanned ? 'ph-lock-key-open' : 'ph-prohibit'}"></i>
+              <span>${u.isBanned ? 'Mở Khóa' : 'Khóa Nick'}</span>
+            </button>
+            <button class="btn-admin-delete" data-uid="${escapeHtml(u.id)}" data-name="${escapeHtml(u.username)}" title="Xoá vĩnh viễn tài khoản">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          ` : '<span style="font-size: 11px; color: var(--text-muted); font-style: italic;">Quản trị viên</span>'}
+        </div>
+      </div>
+    `;
+
+    // Ban / Unban Button Click
+    const banBtn = row.querySelector('.btn-admin-ban, .btn-admin-unban');
+    if (banBtn) {
+      banBtn.addEventListener('click', async () => {
+        const uid = banBtn.dataset.uid;
+        const currentBanned = banBtn.dataset.banned === 'true';
+        const newBanState = !currentBanned;
+        const confirmMsg = newBanState 
+          ? `Bạn có chắc chắn muốn KHOÁ TÀI KHOẢN người dùng "${u.username}" không?`
+          : `Bạn có muốn MỞ KHÓA cho tài khoản "${u.username}" không?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+          const res = await apiRequest(`/api/admin/users/${uid}/ban`, {
+            method: 'PUT',
+            body: JSON.stringify({ isBanned: newBanState })
+          });
+          if (res.success) {
+            showToast(res.message, newBanState ? 'warning' : 'success');
+            u.isBanned = newBanState;
+            renderAdminUsers();
+          }
+        } catch (err) {
+          showToast(`⚠️ ${err.message}`, 'error');
+        }
+      });
+    }
+
+    // Delete Button Click
+    const delBtn = row.querySelector('.btn-admin-delete');
+    if (delBtn) {
+      delBtn.addEventListener('click', async () => {
+        const uid = delBtn.dataset.uid;
+        const uname = delBtn.dataset.name;
+        if (!confirm(`⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN tài khoản "${uname}" khỏi cơ sở dữ liệu không?\nHành động này không thể hoàn tác!`)) return;
+
+        try {
+          const res = await apiRequest(`/api/admin/users/${uid}`, {
+            method: 'DELETE'
+          });
+          if (res.success) {
+            showToast(res.message, 'success');
+            adminUsersData = adminUsersData.filter(userItem => userItem.id !== uid);
+            renderAdminUsers();
+          }
+        } catch (err) {
+          showToast(`⚠️ ${err.message}`, 'error');
+        }
+      });
+    }
+
+    list.appendChild(row);
   });
 }
 

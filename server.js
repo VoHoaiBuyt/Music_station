@@ -45,9 +45,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // REST API Routes
+const adminRoutes = require('./src/routes/admin.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/admin', adminRoutes);
 
 // SPA Fallback to index.html for unknown GET requests
 app.get('*', (req, res, next) => {

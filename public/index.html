@@ -59,6 +59,12 @@
           <span>Tạo Phòng Mới</span>
         </button>
 
+        <!-- Admin Control Panel Trigger Button (Shown only when logged in as ADMIN) -->
+        <button class="btn-admin-panel-trigger" id="btnOpenAdminPanel" style="display: none;" title="Bảng Điều Khiển Quản Trị Hệ Thống">
+          <i class="ph-bold ph-shield-check"></i>
+          <span>Quản Trị</span>
+        </button>
+
         <!-- Guest Auth Trigger Button (Shown when not logged in) -->
         <button class="auth-trigger-btn" id="btnOpenAuthModal">
           <i class="ph-bold ph-user-circle"></i>
@@ -653,6 +659,40 @@
           <i class="ph-bold ph-sign-out"></i>
           <span>Đăng Xuất</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- MODAL: ADMIN CONTROL PANEL (QUẢN TRỊ USER & HỆ THỐNG)-->
+  <!-- ==================================================== -->
+  <div class="modal-backdrop" id="adminModal" style="display: none;">
+    <div class="modal-card admin-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-stack">
+          <h3 class="modal-title"><i class="ph-fill ph-shield-check" style="color: var(--accent-amber);"></i> Bảng Quản Trị Hệ Thống</h3>
+          <p class="modal-subtitle">Quản lý danh sách thành viên, khóa/mở khóa tài khoản (Ban/Unban) hoặc xoá vĩnh viễn</p>
+        </div>
+        <button class="btn-close-modal" id="btnCloseAdminModal"><i class="ph-bold ph-x"></i></button>
+      </div>
+
+      <!-- Admin Search & Filter Bar -->
+      <div class="admin-search-bar-row">
+        <div class="admin-search-input-wrap">
+          <i class="ph ph-magnifying-glass"></i>
+          <input type="text" id="adminUserSearchInput" placeholder="Tìm kiếm người dùng theo username, email hoặc role..." autocomplete="off">
+        </div>
+        <button class="btn-admin-refresh" id="btnRefreshAdminUsers" title="Làm mới danh sách">
+          <i class="ph ph-arrows-clockwise"></i>
+          <span>Làm Mới</span>
+        </button>
+      </div>
+
+      <!-- User Management Table / List -->
+      <div class="admin-users-table-container">
+        <div class="admin-users-list" id="adminUsersList">
+          <!-- User rows dynamically rendered here -->
+        </div>
       </div>
     </div>
   </div>
