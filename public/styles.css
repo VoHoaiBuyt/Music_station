@@ -722,25 +722,30 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
 
-/* Video Iframe Container */
+/* Video Iframe Container (Always mounted to keep audio streaming, hidden via opacity/z-index) */
 .video-container {
-  display: none;
   width: 100%;
   height: 100%;
   position: absolute;
   inset: 0;
   background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.3s ease;
 }
 
 .video-container.active {
-  display: block;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 #youtubePlayer {
   width: 100%;
   height: 100%;
-  pointer-events: none; /* synchronized via server */
 }
+
 
 /* Now Playing Panel */
 .now-playing-panel {

@@ -216,8 +216,12 @@ window.onYouTubeIframeAPIReady = function() {
 
 function onPlayerReady(event) {
   ytReady = true;
-  event.target.setVolume(localUser.volume);
-  if (localUser.isMuted) event.target.mute();
+  event.target.setVolume(localUser.volume || 80);
+  if (localUser.isMuted) {
+    event.target.mute();
+  } else {
+    event.target.unMute();
+  }
 
   if (stationState.currentTrack) {
     playCurrentStationTrack();
@@ -230,6 +234,10 @@ function onPlayerStateChange(event) {
     DOM.vinylDisc.classList.add('is-spinning');
     DOM.tonearm.classList.add('is-playing');
   } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+    if (event.data === YT.PlayerState.PAUSED) {
+      // Browser may have paused due to autoplay policy
+      DOM.unmuteNotice.classList.add('active');
+    }
     if (event.data === YT.PlayerState.ENDED) {
       DOM.vinylDisc.classList.remove('is-spinning');
       DOM.tonearm.classList.remove('is-playing');
@@ -245,7 +253,7 @@ function onPlayerStateChange(event) {
 
 function onPlayerError(event) {
   console.warn('[YouTube Player] Error:', event.data);
-  showToast('⚠️ Video không thể phát, đang chuyển tiếp...', 'error');
+  showToast('⚠️ Video không cho phép phát nhúng hoặc bị lỗi, đang chuyển tiếp...', 'error');
   if (socket && stationState.currentTrack) {
     socket.emit('client_track_ended', {
       trackId: stationState.currentTrack.id,
@@ -279,12 +287,27 @@ function playCurrentStationTrack() {
     }
   }
 
-  // Autoplay Unmute Check
-  setTimeout(() => {
-    if (ytPlayer && ytPlayer.isMuted && ytPlayer.isMuted()) {
-      DOM.unmuteNotice.classList.add('active');
+  // Attempt to play and unmute
+  try {
+    if (!localUser.isMuted) {
+      ytPlayer.unMute();
+      ytPlayer.setVolume(localUser.volume || 80);
     }
-  }, 1000);
+    ytPlayer.playVideo();
+  } catch (e) {}
+
+  // Autoplay check: If browser blocked sound/play, show banner
+  setTimeout(() => {
+    if (ytPlayer) {
+      const isMuted = ytPlayer.isMuted && ytPlayer.isMuted();
+      const isPaused = ytPlayer.getPlayerState && ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING;
+      if (isMuted || isPaused) {
+        DOM.unmuteNotice.classList.add('active');
+      } else {
+        DOM.unmuteNotice.classList.remove('active');
+      }
+    }
+  }, 1200);
 
   startLocalPlaybackTracker();
 }
@@ -898,20 +921,55 @@ function setupEventListeners() {
     });
   });
 
-  // View switch (Vinyl vs Video)
+  // View switch (Vinyl vs Video) without destroying iframe audio rendering
   DOM.viewVinylBtn.addEventListener('click', () => {
     DOM.viewVinylBtn.classList.add('active');
     DOM.viewVideoBtn.classList.remove('active');
-    DOM.turntableWrapper.style.display = 'flex';
-    DOM.videoContainer.style.display = 'none';
+    DOM.turntableWrapper.style.opacity = '1';
+    DOM.turntableWrapper.style.pointerEvents = 'auto';
+    DOM.turntableWrapper.style.zIndex = '5';
+    DOM.videoContainer.classList.remove('active');
   });
 
   DOM.viewVideoBtn.addEventListener('click', () => {
     DOM.viewVideoBtn.classList.add('active');
     DOM.viewVinylBtn.classList.remove('active');
-    DOM.turntableWrapper.style.display = 'none';
-    DOM.videoContainer.style.display = 'block';
+    DOM.turntableWrapper.style.opacity = '0';
+    DOM.turntableWrapper.style.pointerEvents = 'none';
+    DOM.turntableWrapper.style.zIndex = '1';
+    DOM.videoContainer.classList.add('active');
   });
+
+  // Click on turntable or stage to unmute / play
+  DOM.turntableWrapper.addEventListener('click', () => {
+    if (ytReady && ytPlayer) {
+      try {
+        ytPlayer.unMute();
+        ytPlayer.setVolume(localUser.volume || 80);
+        ytPlayer.playVideo();
+        DOM.unmuteNotice.classList.remove('active');
+      } catch (e) {}
+    }
+  });
+
+  // Global one-time interaction listener to unblock browser autoplay policy
+  const unlockAudio = () => {
+    if (ytReady && ytPlayer) {
+      try {
+        if (ytPlayer.isMuted && ytPlayer.isMuted()) {
+          ytPlayer.unMute();
+          ytPlayer.setVolume(localUser.volume || 80);
+        }
+        if (ytPlayer.getPlayerState && ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
+          ytPlayer.playVideo();
+        }
+        DOM.unmuteNotice.classList.remove('active');
+      } catch (e) {}
+    }
+  };
+  document.addEventListener('click', unlockAudio, { once: true });
+  document.addEventListener('touchstart', unlockAudio, { once: true });
+
 
   // Admin Instant Skip
   DOM.btnAdminInstantSkip.addEventListener('click', () => {
