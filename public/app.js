@@ -483,13 +483,40 @@ function renderLobbyRooms() {
   DOM.lobbyTotalRoomsBadge.textContent = `${filtered.length} phòng`;
 
   if (filtered.length === 0) {
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">
-        <i class="ph ph-magnifying-glass" style="font-size: 40px; margin-bottom: 10px; display: block;"></i>
-        <p style="font-size: 16px; font-weight: 600; color: var(--text-primary);">Không tìm thấy phòng nhạc nào phù hợp</p>
-        <span style="font-size: 13px;">Hãy thử tìm từ khoá khác hoặc tự tạo phòng nhạc mới của riêng bạn!</span>
-      </div>
-    `;
+    if (appState.allRooms.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
+          <div style="width: 70px; height: 70px; margin: 0 auto 16px; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--accent-primary);">
+            <i class="ph-fill ph-broadcast"></i>
+          </div>
+          <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Chưa có phòng nhạc nào</h3>
+          <p style="font-size: 14px; max-width: 450px; margin: 0 auto 20px; line-height: 1.5;">Hãy là người đầu tiên tạo không gian âm nhạc của riêng bạn và mời bạn bè cùng vào nghe!</p>
+          <button class="btn-create-room-trigger" id="btnCreateFirstRoom" style="margin: 0 auto;">
+            <i class="ph-bold ph-plus-circle"></i>
+            <span>+ Tạo Phòng Nhạc Đầu Tiên</span>
+          </button>
+        </div>
+      `;
+      const btn = document.getElementById('btnCreateFirstRoom');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (!appState.currentUser) {
+            DOM.authModal.style.display = 'flex';
+            showToast('🔑 Vui lòng đăng nhập để tạo phòng nhạc!', 'info');
+          } else {
+            DOM.createRoomModal.style.display = 'flex';
+          }
+        });
+      }
+    } else {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">
+          <i class="ph ph-magnifying-glass" style="font-size: 40px; margin-bottom: 10px; display: block;"></i>
+          <p style="font-size: 16px; font-weight: 600; color: var(--text-primary);">Không tìm thấy phòng nhạc nào phù hợp</p>
+          <span style="font-size: 13px;">Hãy thử tìm từ khoá khác hoặc tự tạo phòng nhạc mới của riêng bạn!</span>
+        </div>
+      `;
+    }
     return;
   }
 
@@ -716,11 +743,30 @@ function initSocket() {
 // 8. Track UI & Queue Helpers
 // ==========================================
 function updateTrackUI(track) {
-  if (!track) return;
+  if (!track) {
+    DOM.currentTitle.textContent = '🎵 Phòng đang chờ bài hát đầu tiên...';
+    DOM.currentTitle.title = 'Phòng đang chờ bài hát đầu tiên';
+    DOM.currentAuthor.textContent = 'Dán link YouTube ở tab Thêm Bài để bắt đầu phát nhạc!';
+    DOM.requesterName.textContent = 'Trống';
+    const fallbackCover = appState.activeRoomData?.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80';
+    DOM.currentThumb.src = fallbackCover;
+    DOM.vinylArtwork.src = fallbackCover;
+    DOM.timeElapsed.textContent = '00:00';
+    DOM.timeDuration.textContent = '00:00';
+    DOM.progressBarFill.style.width = '0%';
+    DOM.vinylDisc.classList.remove('is-spinning');
+    DOM.tonearm.classList.remove('is-playing');
+    if (ytReady && ytPlayer && ytPlayer.pauseVideo) {
+      try { ytPlayer.pauseVideo(); } catch (e) {}
+    }
+    if (playbackSyncInterval) clearInterval(playbackSyncInterval);
+    return;
+  }
+
   DOM.currentTitle.textContent = track.title;
   DOM.currentTitle.title = track.title;
   DOM.currentAuthor.textContent = track.author || 'Unknown Artist';
-  DOM.requesterName.textContent = track.isDefault ? 'Station Radio' : track.requestedBy;
+  DOM.requesterName.textContent = track.requestedBy || 'Member';
   DOM.currentThumb.src = track.thumbnail || `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
   DOM.vinylArtwork.src = track.thumbnail || `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
 

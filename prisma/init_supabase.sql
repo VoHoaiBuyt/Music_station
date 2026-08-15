@@ -100,18 +100,12 @@ CREATE TABLE IF NOT EXISTS music_station_db.chat_messages (
 ALTER TABLE music_station_db.chat_messages ADD COLUMN IF NOT EXISTS "roomSlug" VARCHAR(120) DEFAULT 'main-lofi-lounge';
 ALTER TABLE music_station_db.chat_messages ADD COLUMN IF NOT EXISTS role VARCHAR(30) DEFAULT 'USER';
 
--- 8. Seed Default Main Room if empty
-INSERT INTO music_station_db.rooms (slug, name, description, genre, "coverUrl", "creatorName", "isDefault")
-VALUES 
-  ('main-lofi-lounge', '🎧 Sảnh Lofi & Chill Chính', 'Không gian âm nhạc trực tuyến kết nối mọi người.', 'Lofi & Chill', 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80', 'Station Master', true)
-ON CONFLICT (slug) DO NOTHING;
-
--- 9. Seed Super Admin User
+-- 8. Seed Super Admin User
 INSERT INTO music_station_db.users (username, email, "passwordHash", avatar, role, level, xp)
 VALUES ('admin', 'admin@lofilounge.com', '$2a$10$WjE1r9w.m.V4fK7L2kF2u.z9Y9A8B7C6D5E4F3G2H1I0J9K8L7M6N', '👑', 'ADMIN', 99, 9999)
 ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', avatar = '👑', level = 99;
 
--- 10. Indexes for performance
+-- 9. Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_rooms_slug ON music_station_db.rooms(slug);
 CREATE INDEX IF NOT EXISTS idx_rooms_genre ON music_station_db.rooms(genre);
 CREATE INDEX IF NOT EXISTS idx_users_username ON music_station_db.users(username);

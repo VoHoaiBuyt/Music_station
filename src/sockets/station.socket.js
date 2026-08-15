@@ -3,6 +3,12 @@ const env = require('../config/env');
 const db = require('../config/db');
 const { roomManager, extractYouTubeId, fetchYouTubeMetadata } = require('../services/room.manager');
 
+function formatDuration(sec) {
+  const m = Math.floor((sec || 0) / 60);
+  const s = Math.floor((sec || 0) % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 function setupStationSockets(io) {
   // Socket Handshake Authentication Middleware
   io.use(async (socket, next) => {
@@ -185,29 +191,19 @@ function setupStationSockets(io) {
           addedAt: Date.now()
         };
 
-        room.queue.push(newTrack);
+        await room.addTrack(newTrack, user);
         room.applyUserCooldown(user.id, user.role);
 
-
-        // PERSISTENCE: Save updated queue to Supabase
-        db.saveRoomState(room.slug, room.currentTrack, room.queue);
-
-        room.broadcastSystemMessage(`✨ ${user.username} đã thêm bài "${newTrack.title}" vào hàng chờ (#${room.queue.length})`, '🎵');
-
-        io.to(room.getRoomSocketNamespace()).emit('queue_updated', {
-          queue: room.queue,
-          addedTrack: newTrack
-        });
+        room.broadcastSystemMessage(`✨ ${user.username} đã thêm bài "${newTrack.title}" (${formatDuration(newTrack.duration)})`, '🎵');
+        roomManager.broadcastLobbyUpdate();
 
         socket.emit('queue_success', {
           track: newTrack,
           cooldown: room.getUserCooldownInfo(user.id, user.role)
         });
-
-        roomManager.broadcastLobbyUpdate();
       } catch (err) {
-        console.error('[Add Queue Error]:', err);
-        socket.emit('queue_error', { message: 'Có lỗi xảy ra khi xử lý bài hát!' });
+        console.error('[Add to Queue Error]:', err.message);
+        socket.emit('queue_error', { message: 'Không thể thêm bài hát vào hàng chờ!' });
       }
     });
 

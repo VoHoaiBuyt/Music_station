@@ -2,33 +2,6 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const env = require('../config/env');
 
-// Genre-specific curated playlists for continuous background streaming
-const GENRE_PLAYLISTS = {
-  'Lofi & Chill': [
-    { videoId: 'jfKfPfyJRdk', title: 'lofi hip hop radio 📚 - beats to relax/study to', author: 'Lofi Girl', thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg', duration: 300 },
-    { videoId: '5qap5aO4i9A', title: 'lofi hip hop radio 💤 - beats to sleep/chill to', author: 'Lofi Girl', thumbnail: 'https://i.ytimg.com/vi/5qap5aO4i9A/hqdefault.jpg', duration: 300 },
-    { videoId: 'DWcJFNfaw90', title: 'Coffee Shop Lofi ☕ Chill relaxing beats', author: 'Lofi Vibes', thumbnail: 'https://i.ytimg.com/vi/DWcJFNfaw90/hqdefault.jpg', duration: 260 },
-    { videoId: 'rUxyKA_-grg', title: 'Japanese Garden Lofi 🌸 Peaceful Beats', author: 'Chill Garden', thumbnail: 'https://i.ytimg.com/vi/rUxyKA_-grg/hqdefault.jpg', duration: 270 }
-  ],
-  'Cyberpunk & Synth': [
-    { videoId: 'TURbeWK2wwg', title: 'Tokyo Night Drive 🌃 - Synth & Lofi Chill', author: 'ChillHop Station', thumbnail: 'https://i.ytimg.com/vi/TURbeWK2wwg/hqdefault.jpg', duration: 240 },
-    { videoId: '4xDzrJKXOOY', title: 'synthwave radio 🌌 - chill synth / retro beats', author: 'Lofi Girl Synth', thumbnail: 'https://i.ytimg.com/vi/4xDzrJKXOOY/hqdefault.jpg', duration: 300 },
-    { videoId: 'wOmw_dYcQhM', title: 'Cyberpunk Night City Chill ⚡ Neon Ambience', author: 'Cyber Sound', thumbnail: 'https://i.ytimg.com/vi/wOmw_dYcQhM/hqdefault.jpg', duration: 280 }
-  ],
-  'Coffee & Acoustic': [
-    { videoId: 'DWcJFNfaw90', title: 'Coffee Shop Lofi ☕ Chill relaxing beats', author: 'Lofi Vibes', thumbnail: 'https://i.ytimg.com/vi/DWcJFNfaw90/hqdefault.jpg', duration: 260 },
-    { videoId: 'kgx4WGK0oNU', title: 'Jazz & Bossa Nova Cafe Music ☕ Relaxing Vibes', author: 'Cafe Music BGM', thumbnail: 'https://i.ytimg.com/vi/kgx4WGK0oNU/hqdefault.jpg', duration: 320 },
-    { videoId: 'lP26UCnoHgo', title: 'Acoustic Guitar Morning Chill 🎸', author: 'Acoustic Morning', thumbnail: 'https://i.ytimg.com/vi/lP26UCnoHgo/hqdefault.jpg', duration: 260 }
-  ],
-  'Anime & Piano': [
-    { videoId: 'M_fSg-zJ1eA', title: 'Studio Ghibli Piano Collection 🌸 Peaceful Piano', author: 'Ghibli Relax', thumbnail: 'https://i.ytimg.com/vi/M_fSg-zJ1eA/hqdefault.jpg', duration: 300 },
-    { videoId: 'W3q8Od5qJio', title: 'Relaxing Anime Piano Solos 🎹 Nostalgic Melodies', author: 'Animenz Piano', thumbnail: 'https://i.ytimg.com/vi/W3q8Od5qJio/hqdefault.jpg', duration: 280 },
-    { videoId: 'dx41hZ1JqT8', title: 'Your Name (Kimi no Na wa) Piano Medley ✨', author: 'Theishter', thumbnail: 'https://i.ytimg.com/vi/dx41hZ1JqT8/hqdefault.jpg', duration: 310 }
-  ]
-};
-
-const DEFAULT_FALLBACK_TRACKS = GENRE_PLAYLISTS['Lofi & Chill'];
-
 // Helper: Extract YouTube ID
 function extractYouTubeId(urlOrId) {
   if (!urlOrId || typeof urlOrId !== 'string') return null;
@@ -66,7 +39,7 @@ async function fetchYouTubeMetadata(videoId) {
 }
 
 // ==========================================
-// Independent Room Instance Class
+// Independent Room Instance Class (100% User-Driven)
 // ==========================================
 class RoomInstance {
   constructor(roomData, io) {
@@ -75,15 +48,14 @@ class RoomInstance {
     this.slug = roomData.slug;
     this.name = roomData.name;
     this.description = roomData.description || '';
-    this.genre = roomData.genre || 'Lofi & Chill';
+    this.genre = roomData.genre || 'Phòng Nhạc Tự Do';
     this.coverUrl = roomData.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80';
     this.isPrivate = !!roomData.isPrivate;
     this.passwordHash = roomData.passwordHash || null;
     this.creatorId = roomData.creatorId;
-    this.creatorName = roomData.creatorName || 'Station Master';
+    this.creatorName = roomData.creatorName || 'Member';
     this.isDefault = !!roomData.isDefault;
 
-    this.defaultIndex = 0;
     this.currentTrack = null;
     this.queue = Array.isArray(roomData.queue) ? roomData.queue : [];
     this.users = {}; // socketId -> { userId, username, avatar, role, isGuest, socketId }
@@ -109,10 +81,6 @@ class RoomInstance {
     return 'room_' + this.slug;
   }
 
-  getPlaylistForGenre() {
-    return GENRE_PLAYLISTS[this.genre] || DEFAULT_FALLBACK_TRACKS;
-  }
-
   async loadRecentChatFromDB() {
     try {
       const messages = await db.getRecentChat(this.slug, 30);
@@ -133,7 +101,7 @@ class RoomInstance {
     }
   }
 
-  // Restore or start initial playback
+  // Restore persistent playback or wait for users to add songs
   initPlayback(savedTrack) {
     if (savedTrack && savedTrack.videoId && savedTrack.startTime) {
       const now = Date.now();
@@ -145,7 +113,7 @@ class RoomInstance {
         this.currentTrack = savedTrack;
         const remainingMs = Math.max(1000, (duration - elapsed) * 1000);
         
-        console.log(`[Room ${this.slug}] Restored playing track: "${savedTrack.title}" (${Math.floor(elapsed)}s / ${duration}s)`);
+        console.log(`[Room ${this.slug}] Restored user track: "${savedTrack.title}" (${Math.floor(elapsed)}s / ${duration}s)`);
 
         this.trackEndTimer = setTimeout(() => {
           this.playNextTrack('restored_timer_end');
@@ -154,8 +122,13 @@ class RoomInstance {
       }
     }
 
-    // Otherwise, immediately launch next track from queue or default genre playlist
-    this.playNextTrack('init');
+    // If queue has songs, play next from queue
+    if (this.queue.length > 0) {
+      this.playNextTrack('init');
+    } else {
+      // Room is clean and waiting for songs from users
+      this.currentTrack = null;
+    }
   }
 
   getOnlineCount() {
@@ -295,117 +268,218 @@ class RoomInstance {
 
     if (this.queue.length > 0) {
       nextTrack = this.queue.shift();
-    } else {
-      const playlist = this.getPlaylistForGenre();
-      const def = playlist[this.defaultIndex % playlist.length];
-      this.defaultIndex++;
-      nextTrack = {
-        ...def,
-        id: 'def_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        requestedBy: 'Station Radio',
-        requestedById: null,
-        isDefault: true
-      };
-    }
+      nextTrack.startTime = Date.now();
+      this.currentTrack = nextTrack;
 
-    nextTrack.startTime = Date.now();
-    if (!nextTrack.duration || nextTrack.duration <= 0) {
-      nextTrack.duration = 240;
-    }
+      console.log(`[Room ${this.slug}] Playing user track: "${nextTrack.title}" (${nextTrack.duration}s) by ${nextTrack.requestedBy}`);
 
-    this.currentTrack = nextTrack;
-
-    // PERSISTENCE: Save room state to PostgreSQL Supabase
-    db.saveRoomState(this.slug, this.currentTrack, this.queue);
-    db.addSongHistory(this.slug, nextTrack).catch(() => {});
-
-    this.broadcastSystemMessage(`🎵 Đang phát: "${nextTrack.title}" (${nextTrack.isDefault ? 'Station Radio' : 'yêu cầu bởi ' + nextTrack.requestedBy})`, '📻');
-
-    this.startVoteWindow(nextTrack.id);
-
-    if (this.io) {
-      this.io.to(this.getRoomSocketNamespace()).emit('track_started', {
-        slug: this.slug,
-        track: {
-          ...nextTrack,
-          elapsed: 0
-        },
-        queue: this.queue,
-        voteWindow: {
-          active: true,
-          trackId: nextTrack.id,
-          duration: env.VOTE_WINDOW_DURATION_SEC,
-          totalListeners: this.getOnlineCount()
-        }
+      // Record to song history
+      db.addSongHistory({
+        roomSlug: this.slug,
+        videoId: nextTrack.videoId,
+        title: nextTrack.title,
+        author: nextTrack.author,
+        thumbnail: nextTrack.thumbnail,
+        duration: nextTrack.duration,
+        requestedById: nextTrack.requestedById,
+        requestedByName: nextTrack.requestedBy,
+        isDefault: false
       });
-    }
 
-    this.trackEndTimer = setTimeout(() => {
-      if (this.currentTrack && this.currentTrack.id === nextTrack.id) {
-        this.playNextTrack('timer_ended');
+      // Save state
+      db.saveRoomState(this.slug, this.currentTrack, this.queue);
+
+      // Notify clients
+      if (this.io) {
+        this.io.to(this.getRoomSocketNamespace()).emit('track_started', {
+          slug: this.slug,
+          track: this.currentTrack,
+          queue: this.queue,
+          voteWindow: {
+            active: true,
+            trackId: nextTrack.id,
+            duration: env.VOTE_WINDOW_DURATION_SEC,
+            skipCount: 0,
+            keepCount: 0,
+            totalListeners: this.getOnlineCount()
+          }
+        });
       }
-    }, (nextTrack.duration + 5) * 1000);
+
+      this.startVoteWindow(nextTrack.id);
+
+      // Schedule next track timer
+      const trackDurationMs = (nextTrack.duration || 240) * 1000;
+      this.trackEndTimer = setTimeout(() => {
+        this.playNextTrack('timer_end');
+      }, trackDurationMs);
+
+    } else {
+      // No more songs in queue -> Enter waiting state
+      this.currentTrack = null;
+      db.saveRoomState(this.slug, null, []);
+
+      console.log(`[Room ${this.slug}] Queue empty. Waiting for users to add songs.`);
+
+      if (this.io) {
+        this.io.to(this.getRoomSocketNamespace()).emit('station_state_update', {
+          slug: this.slug,
+          currentTrack: null,
+          queue: [],
+          activeVote: { active: false },
+          onlineCount: this.getOnlineCount()
+        });
+      }
+    }
   }
 
-  getUserCooldownInfo(userId, role = 'USER') {
-    if (!userId) return { hasUsedFirstTimeBonus: false, remainingSeconds: 0, canAdd: true };
+  // Add song to room
+  async addTrack(trackData, user) {
+    const isRoomEmpty = !this.currentTrack;
 
-    if (!this.userCooldowns[userId]) {
-      this.userCooldowns[userId] = {
-        hasUsedFirstTimeBonus: false,
-        nextAvailableTime: 0
-      };
+    if (isRoomEmpty) {
+      trackData.startTime = Date.now();
+      this.currentTrack = trackData;
+
+      console.log(`[Room ${this.slug}] First track added! Playing: "${trackData.title}"`);
+
+      // Record to history
+      db.addSongHistory({
+        roomSlug: this.slug,
+        videoId: trackData.videoId,
+        title: trackData.title,
+        author: trackData.author,
+        thumbnail: trackData.thumbnail,
+        duration: trackData.duration,
+        requestedById: trackData.requestedById,
+        requestedByName: trackData.requestedBy,
+        isDefault: false
+      });
+
+      db.saveRoomState(this.slug, this.currentTrack, this.queue);
+
+      if (this.io) {
+        this.io.to(this.getRoomSocketNamespace()).emit('track_started', {
+          slug: this.slug,
+          track: this.currentTrack,
+          queue: this.queue,
+          voteWindow: {
+            active: true,
+            trackId: trackData.id,
+            duration: env.VOTE_WINDOW_DURATION_SEC,
+            skipCount: 0,
+            keepCount: 0,
+            totalListeners: this.getOnlineCount()
+          }
+        });
+      }
+
+      this.startVoteWindow(trackData.id);
+
+      const trackDurationMs = (trackData.duration || 240) * 1000;
+      this.trackEndTimer = setTimeout(() => {
+        this.playNextTrack('timer_end');
+      }, trackDurationMs);
+
+    } else {
+      this.queue.push(trackData);
+      db.saveRoomState(this.slug, this.currentTrack, this.queue);
+
+      if (this.io) {
+        this.io.to(this.getRoomSocketNamespace()).emit('queue_updated', {
+          slug: this.slug,
+          queue: this.queue
+        });
+      }
     }
-
-    const userCooldown = this.userCooldowns[userId];
-    const now = Date.now();
-
-    if (role === 'ADMIN' || userId === this.creatorId) {
-      return {
-        hasUsedFirstTimeBonus: true,
-        remainingSeconds: 0,
-        canAdd: true,
-        isFirstBonus: false,
-        isAdmin: true
-      };
-    }
-
-    if (!userCooldown.hasUsedFirstTimeBonus) {
-      return {
-        hasUsedFirstTimeBonus: false,
-        remainingSeconds: 0,
-        canAdd: true,
-        isFirstBonus: true
-      };
-    }
-
-    const remainingMs = Math.max(0, userCooldown.nextAvailableTime - now);
-    const remainingSeconds = Math.ceil(remainingMs / 1000);
-
-    return {
-      hasUsedFirstTimeBonus: true,
-      remainingSeconds,
-      canAdd: remainingSeconds <= 0,
-      nextAvailableTime: userCooldown.nextAvailableTime,
-      isFirstBonus: false
-    };
   }
 
-  applyUserCooldown(userId, role = 'USER') {
-    if (!userId) return;
-    const cooldownDuration = (role === 'VIP' || role === 'DJ') 
+  getUserCooldownInfo(userId, role) {
+    if (role === 'ADMIN') {
+      return { canAdd: true, remainingSeconds: 0, isAdmin: true };
+    }
+
+    const lastAdd = this.userCooldowns[userId];
+    if (!lastAdd) {
+      return { canAdd: true, remainingSeconds: 0, isFirstBonus: true };
+    }
+
+    const durationMs = (role === 'VIP' || role === 'DJ') 
       ? env.VIP_COOLDOWN_DURATION_MS 
       : env.COOLDOWN_DURATION_MS;
 
-    this.userCooldowns[userId] = {
-      hasUsedFirstTimeBonus: true,
-      nextAvailableTime: Date.now() + cooldownDuration
-    };
+    const elapsed = Date.now() - lastAdd;
+    if (elapsed >= durationMs) {
+      return { canAdd: true, remainingSeconds: 0 };
+    }
+
+    const remainingSec = Math.ceil((durationMs - elapsed) / 1000);
+    return { canAdd: false, remainingSeconds: remainingSec };
   }
 
-  // Get Room Summary for Lobby Explorer
+  applyUserCooldown(userId, role) {
+    if (role === 'ADMIN') return;
+    this.userCooldowns[userId] = Date.now();
+  }
+
+  registerVote(userId, voteType) {
+    if (!this.activeVote.active) return false;
+
+    // Remove user previous votes
+    this.activeVote.votesSkip = this.activeVote.votesSkip.filter(id => id !== userId);
+    this.activeVote.votesKeep = this.activeVote.votesKeep.filter(id => id !== userId);
+
+    if (voteType === 'skip') {
+      this.activeVote.votesSkip.push(userId);
+    } else if (voteType === 'keep') {
+      this.activeVote.votesKeep.push(userId);
+    }
+
+    // Check if threshold reached
+    if (this.checkVoteThreshold()) {
+      return true;
+    }
+
+    // Broadcast updated vote counts
+    if (this.io) {
+      this.io.to(this.getRoomSocketNamespace()).emit('vote_counts_updated', {
+        trackId: this.activeVote.trackId,
+        skipCount: this.activeVote.votesSkip.length,
+        keepCount: this.activeVote.votesKeep.length,
+        totalListeners: this.getOnlineCount()
+      });
+    }
+
+    return true;
+  }
+
+  adminInstantSkip() {
+    this.broadcastSystemMessage('⚡ Quản trị viên / Chủ phòng đã chuyển sang bài hát tiếp theo!', '⚡');
+    this.endVoteWindow(true);
+    this.playNextTrack('admin_skip');
+  }
+
+  addUser(socket, user) {
+    this.users[socket.id] = {
+      socketId: socket.id,
+      userId: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      role: user.role,
+      isGuest: user.isGuest
+    };
+    socket.join(this.getRoomSocketNamespace());
+    this.broadcastRoomState();
+  }
+
+  removeUser(socketId) {
+    if (this.users[socketId]) {
+      delete this.users[socketId];
+      this.broadcastRoomState();
+    }
+  }
+
   getSummary() {
-    const elapsed = this.currentTrack ? Math.max(0, (Date.now() - this.currentTrack.startTime) / 1000) : 0;
     return {
       id: this.id,
       slug: this.slug,
@@ -413,45 +487,45 @@ class RoomInstance {
       description: this.description,
       genre: this.genre,
       coverUrl: this.coverUrl,
-      isPrivate: this.isPrivate,
-      creatorName: this.creatorName,
       creatorId: this.creatorId,
+      creatorName: this.creatorName,
+      isPrivate: this.isPrivate,
       isDefault: this.isDefault,
       onlineCount: this.getOnlineCount(),
-      queueLength: this.queue.length,
-      currentTrack: this.currentTrack ? {
-        title: this.currentTrack.title,
-        author: this.currentTrack.author,
-        thumbnail: this.currentTrack.thumbnail,
-        duration: this.currentTrack.duration,
-        elapsed
-      } : null
+      currentTrack: this.currentTrack,
+      queue: this.queue
     };
+  }
+
+  destroy() {
+    if (this.trackEndTimer) clearTimeout(this.trackEndTimer);
+    if (this.activeVote.timer) clearTimeout(this.activeVote.timer);
   }
 }
 
 // ==========================================
-// Central Multi-Room Manager Class
+// Master Room Manager Class
 // ==========================================
 class RoomManager {
   constructor() {
-    this.io = null;
     this.rooms = new Map(); // slug -> RoomInstance
+    this.io = null;
   }
 
   async initAllRooms(io) {
     this.io = io;
-    console.log('⚡ Initializing Multi-Room Engine from Supabase PostgreSQL...');
+    console.log('⚡ Initializing Multi-Room Hub from Supabase PostgreSQL...');
 
-    const dbRooms = await db.getAllRooms();
-    this.rooms.clear();
-
-    for (const r of dbRooms) {
-      const instance = new RoomInstance(r, this.io);
-      this.rooms.set(r.slug, instance);
+    try {
+      const dbRooms = await db.getAllRooms();
+      dbRooms.forEach(r => {
+        const instance = new RoomInstance(r, this.io);
+        this.rooms.set(r.slug, instance);
+      });
+      console.log(`✅ Loaded ${this.rooms.size} active user room(s)!`);
+    } catch (err) {
+      console.error('❌ Failed to load rooms from DB:', err.message);
     }
-
-    console.log(`✅ Loaded ${this.rooms.size} active music rooms running independently!`);
   }
 
   getRoom(slug) {
@@ -459,33 +533,48 @@ class RoomManager {
   }
 
   getAllRoomsSummary() {
+    return this.getAllRoomsList();
+  }
+
+  getAllRoomsList() {
     const list = [];
-    for (const r of this.rooms.values()) {
-      list.push(r.getSummary());
+    for (const [slug, room] of this.rooms.entries()) {
+      list.push({
+        id: room.id,
+        slug: room.slug,
+        name: room.name,
+        description: room.description,
+        genre: room.genre,
+        coverUrl: room.coverUrl,
+        creatorId: room.creatorId,
+        creatorName: room.creatorName,
+        isPrivate: room.isPrivate,
+        isDefault: room.isDefault,
+        onlineCount: room.getOnlineCount(),
+        currentTrack: room.currentTrack ? {
+          title: room.currentTrack.title,
+          author: room.currentTrack.author,
+          thumbnail: room.currentTrack.thumbnail,
+          duration: room.currentTrack.duration
+        } : null
+      });
     }
     return list;
   }
 
-  async createRoom({ name, description, genre, coverUrl, isPrivate, password, user }) {
-    if (!name || name.trim().length < 3) {
-      throw { statusCode: 400, message: 'Tên phòng phải có ít nhất 3 ký tự!' };
-    }
-
-    const cleanName = name.trim();
+  async createRoom({ name, description, genre, coverUrl, isPrivate, password, creatorId, creatorName }) {
     // Generate clean unique slug
-    let baseSlug = cleanName
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+    let baseSlug = name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
     
-    if (!baseSlug) baseSlug = 'room';
+    if (!baseSlug) baseSlug = 'music-room-' + Math.floor(1000 + Math.random() * 9000);
     let slug = baseSlug;
-    let counter = 1;
+    let count = 1;
 
     while (this.rooms.has(slug)) {
-      slug = `${baseSlug}-${counter++}`;
+      slug = `${baseSlug}-${count++}`;
     }
 
     let passwordHash = null;
@@ -493,55 +582,46 @@ class RoomManager {
       passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const newRoomRecord = await db.createRoom({
+    const created = await db.createRoom({
       slug,
-      name: cleanName,
+      name,
       description: description || '',
-      genre: genre ? genre.trim() : 'Lofi & Chill',
+      genre: genre || 'Phòng Nhạc Tự Do',
       coverUrl: coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80',
       isPrivate: !!isPrivate,
       passwordHash,
-      creatorId: user ? user.id : null,
-      creatorName: user ? user.username : 'User'
+      creatorId,
+      creatorName: creatorName || 'Member',
+      isDefault: false
     });
 
-    const instance = new RoomInstance(newRoomRecord, this.io);
+    const instance = new RoomInstance(created, this.io);
     this.rooms.set(slug, instance);
 
-    // Notify Lobby
     this.broadcastLobbyUpdate();
-
-    return instance.getSummary();
+    return created;
   }
 
-  async deleteRoom(slug, userId, userRole) {
+  async deleteRoom(slug, requesterUser) {
     const room = this.rooms.get(slug);
-    if (!room) {
-      throw { statusCode: 404, message: 'Phòng không tồn tại!' };
+    if (!room) throw new Error('Phòng nhạc không tồn tại!');
+
+    const isOwner = (requesterUser && (requesterUser.id === room.creatorId || requesterUser.role === 'ADMIN'));
+    if (!isOwner) {
+      throw new Error('Bạn không có quyền xoá phòng nhạc này!');
     }
 
-    if (room.isDefault) {
-      throw { statusCode: 403, message: 'Không thể xoá các phòng mặc định của hệ thống!' };
-    }
-
-    if (userRole !== 'ADMIN' && room.creatorId !== userId) {
-      throw { statusCode: 403, message: 'Chỉ chủ phòng hoặc Quản trị viên mới có quyền xoá phòng!' };
-    }
-
-    // Stop timers
-    if (room.trackEndTimer) clearTimeout(room.trackEndTimer);
-    if (room.activeVote.timer) clearTimeout(room.activeVote.timer);
-
-    await db.deleteRoom(slug, userId, userRole);
+    room.destroy();
     this.rooms.delete(slug);
+    await db.deleteRoom(slug);
 
     this.broadcastLobbyUpdate();
-    return { success: true };
+    return true;
   }
 
   broadcastLobbyUpdate() {
     if (this.io) {
-      this.io.emit('lobby_rooms_update', this.getAllRoomsSummary());
+      this.io.emit('lobby_rooms_update', this.getAllRoomsList());
     }
   }
 }
