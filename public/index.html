@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lofi & Chill Lounge - Multi-user Music Station</title>
+  <meta name="description" content="Phòng nghe nhạc trực tuyến đa người dùng với trình phát YouTube đồng bộ, CSDL Supabase PostgreSQL, xác thực JWT, bình chọn 10s Vote Skip và chat trực tiếp.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+  <!-- Ambient Glow Background -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Floating Reactions Container -->
+  <div id="reactionContainer" class="reaction-container"></div>
+
+  <div class="app-layout">
+    <!-- Top Header -->
+    <header class="station-header">
+      <div class="header-left">
+        <div class="logo-badge">
+          <div class="live-pulse"></div>
+          <i class="ph-bold ph-broadcast logo-icon"></i>
+          <div class="logo-text">
+            <span class="station-name">LOFI & CHILL</span>
+            <span class="station-sub">RADIO LOUNGE • PROD</span>
+          </div>
+        </div>
+        <div class="sync-pill" id="syncStatusPill">
+          <span class="sync-dot"></span>
+          <span class="sync-text" id="syncStatusText">Đồng bộ phòng</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="listeners-badge" id="listenerBadge" title="Người đang nghe trực tuyến">
+          <i class="ph-fill ph-users"></i>
+          <span id="listenerCount">1</span>
+          <span class="badge-label">đang nghe</span>
+        </div>
+
+        <!-- Guest Auth Trigger Button (Shown when not logged in) -->
+        <button class="auth-trigger-btn" id="btnOpenAuthModal">
+          <i class="ph-bold ph-user-circle"></i>
+          <span>Đăng Nhập / Đăng Ký</span>
+        </button>
+
+        <!-- Logged-in Profile Button (Shown when logged in) -->
+        <button class="profile-btn" id="profileBtn" style="display: none;" title="Xem thông tin tài khoản">
+          <span class="user-avatar-badge" id="headerAvatar">🎧</span>
+          <div class="user-info-stack">
+            <div class="user-name-line">
+              <span class="user-name-badge" id="headerUsername">Listener</span>
+              <span class="role-badge" id="headerRoleBadge">VIP</span>
+            </div>
+            <div class="user-level-line">
+              <span class="level-tag" id="headerLevelTag">Lv. 1</span>
+            </div>
+          </div>
+          <i class="ph ph-caret-down"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container: Stage + Social Sidepanel -->
+    <main class="station-main">
+      
+      <!-- LEFT / CENTER: Music Lounge Stage -->
+      <section class="stage-section">
+        
+        <!-- 10-Second Vote Skip / Keep Window (Animated Overlay Banner) -->
+        <div class="vote-banner" id="voteBanner">
+          <div class="vote-banner-header">
+            <div class="vote-tag">
+              <span class="vote-pulse"></span>
+              <span class="vote-tag-title">⚡ BÌNH CHỌN BÀI HÁT (10 GIÂY ĐẦU)</span>
+            </div>
+            <div class="vote-timer" id="voteCountdownTimer">10.0s</div>
+          </div>
+
+          <div class="vote-progress-track">
+            <div class="vote-progress-fill" id="voteProgressBar"></div>
+          </div>
+
+          <div class="vote-body">
+            <div class="vote-info">
+              <p class="vote-prompt">Bạn có muốn nghe tiếp bài hát này không?</p>
+              <span class="vote-threshold-note" id="voteThresholdNote">Cần 1 phiếu Skip để bỏ qua</span>
+            </div>
+
+            <div class="vote-actions">
+              <button class="vote-btn btn-keep" id="btnVoteKeep">
+                <i class="ph-fill ph-thumbs-up"></i>
+                <span>Giữ lại</span>
+                <span class="vote-badge" id="keepCountBadge">0</span>
+              </button>
+              <button class="vote-btn btn-skip" id="btnVoteSkip">
+                <i class="ph-fill ph-fast-forward"></i>
+                <span>Bỏ qua (Skip)</span>
+                <span class="vote-badge" id="skipCountBadge">0</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Autoplay Safety Notice Banner (Click to Unmute) -->
+        <div class="unmute-notice" id="unmuteNotice">
+          <div class="unmute-icon"><i class="ph-fill ph-speaker-simple-slash"></i></div>
+          <div class="unmute-info">
+            <strong>Trình duyệt đã tắt tiếng tự động!</strong>
+            <span>Nhấn vào đây để bật âm thanh & hòa cùng phòng nhạc.</span>
+          </div>
+          <button class="unmute-btn" id="btnUnmute"><i class="ph-fill ph-speaker-high"></i> Bật âm thanh</button>
+        </div>
+
+        <!-- Player Visualizer & Vinyl Deck -->
+        <div class="player-stage-card">
+          
+          <!-- Mode Switcher (Vinyl Mode vs Video Mode) -->
+          <div class="view-switch-bar">
+            <button class="view-switch-btn active" id="viewVinylBtn">
+              <i class="ph ph-disc"></i> Đĩa than Lofi
+            </button>
+            <button class="view-switch-btn" id="viewVideoBtn">
+              <i class="ph ph-video"></i> Video YouTube
+            </button>
+            <button class="admin-skip-btn" id="btnAdminInstantSkip" style="display: none;" title="Đặc quyền Admin / Mod: Bỏ qua bài ngay">
+              <i class="ph-bold ph-lightning"></i> Admin Skip
+            </button>
+          </div>
+
+          <!-- Stage Visual Area -->
+          <div class="stage-visual-container">
+            
+            <!-- Audio Waveform Visualizer Behind Vinyl -->
+            <div class="equalizer-waves" id="equalizerWaves">
+              <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+              <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+              <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+              <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+              <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+              <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+            </div>
+
+            <!-- Vinyl Turntable Display -->
+            <div class="turntable-wrapper" id="turntableWrapper">
+              <!-- Vinyl Record -->
+              <div class="vinyl-disc is-spinning" id="vinylDisc">
+                <div class="vinyl-grooves"></div>
+                <div class="vinyl-center">
+                  <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80" alt="Album Cover" class="vinyl-artwork" id="vinylArtwork">
+                  <div class="vinyl-spindle"></div>
+                </div>
+              </div>
+              <!-- Stylized Tonearm -->
+              <div class="tonearm is-playing" id="tonearm">
+                <div class="tonearm-base"></div>
+                <div class="tonearm-rod"></div>
+                <div class="tonearm-head"></div>
+              </div>
+            </div>
+
+            <!-- Embedded YouTube Iframe Container -->
+            <div class="video-container" id="videoContainer">
+              <div id="youtubePlayer"></div>
+            </div>
+          </div>
+
+          <!-- Track Info & Controls Bar -->
+          <div class="now-playing-panel">
+            <div class="track-details">
+              <div class="track-thumb-box">
+                <img src="https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg" alt="Thumbnail" id="nowPlayingThumb" class="track-thumb">
+                <div class="playing-indicator-overlay">
+                  <i class="ph-fill ph-waveform"></i>
+                </div>
+              </div>
+              <div class="track-meta">
+                <div class="track-tag-row">
+                  <span class="source-badge" id="sourceBadge">📻 Station Radio</span>
+                  <span class="requested-by-badge" id="requestedByBadge"></span>
+                  <button class="favorite-toggle-btn" id="btnToggleFavorite" title="Thêm vào danh sách yêu thích">
+                    <i class="ph ph-heart" id="favIcon"></i>
+                  </button>
+                </div>
+                <h2 class="track-title" id="nowPlayingTitle">Đang tải phòng phát nhạc...</h2>
+                <p class="track-author" id="nowPlayingAuthor">Lofi & Chill Station</p>
+              </div>
+            </div>
+
+            <!-- Progress & Controls -->
+            <div class="playback-controls">
+              <div class="progress-container">
+                <span class="time-label" id="timeElapsed">0:00</span>
+                <div class="progress-bar-bg" id="progressBarBg">
+                  <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+                <span class="time-label" id="timeDuration">4:00</span>
+              </div>
+
+              <div class="controls-toolbar">
+                <div class="volume-control">
+                  <button class="volume-btn" id="volumeMuteBtn" title="Tắt / Bật tiếng">
+                    <i class="ph-fill ph-speaker-high" id="volumeIcon"></i>
+                  </button>
+                  <input type="range" id="volumeSlider" min="0" max="100" value="80" class="volume-slider">
+                  <span class="volume-val" id="volumeValue">80%</span>
+                </div>
+
+                <div class="quick-actions">
+                  <button class="action-btn" id="btnResync" title="Đồng bộ lại thời gian với phòng">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Đồng bộ
+                  </button>
+                  <button class="action-btn accent" id="btnOpenAddModal" title="Thêm bài hát mới">
+                    <i class="ph-bold ph-plus-circle"></i> Thêm bài
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- RIGHT / SIDE: Social, Queue, Add & Favorites Drawer -->
+      <aside class="social-section">
+        <!-- Section Tabs -->
+        <div class="tabs-nav">
+          <button class="tab-btn active" data-tab="chat">
+            <i class="ph-fill ph-chat-teardrop-dots"></i>
+            <span>Chat</span>
+          </button>
+          <button class="tab-btn" data-tab="queue">
+            <i class="ph-fill ph-queue"></i>
+            <span>Hàng Chờ</span>
+            <span class="tab-count-badge" id="queueCountBadge">0</span>
+          </button>
+          <button class="tab-btn" data-tab="add">
+            <i class="ph-fill ph-plus-square"></i>
+            <span>Thêm Bài</span>
+            <span class="cooldown-pill" id="tabCooldownPill">Sẵn sàng</span>
+          </button>
+          <button class="tab-btn" data-tab="favorites">
+            <i class="ph-fill ph-heart"></i>
+            <span>Yêu Thích</span>
+            <span class="tab-count-badge" id="favCountBadge">0</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: Live Chat -->
+        <div class="tab-pane active" id="tabChat">
+          <div class="chat-messages-scroll" id="chatMessages">
+            <div class="system-message">
+              <span class="sys-icon">✨</span>
+              <span class="sys-text">Chào mừng bạn đến với Lofi & Chill Station! Thưởng thức âm nhạc đồng bộ thời gian thực.</span>
+            </div>
+          </div>
+
+          <!-- Quick Reaction Emojis -->
+          <div class="reaction-bar">
+            <button class="react-emoji-btn" data-emoji="❤️" title="Thả tim">❤️</button>
+            <button class="react-emoji-btn" data-emoji="🔥" title="Cháy quá">🔥</button>
+            <button class="react-emoji-btn" data-emoji="🎧" title="Nhạc hay">🎧</button>
+            <button class="react-emoji-btn" data-emoji="☕" title="Chill">☕</button>
+            <button class="react-emoji-btn" data-emoji="✨" title="Tuyệt vời">✨</button>
+            <button class="react-emoji-btn" data-emoji="💤" title="Buồn ngủ">💤</button>
+          </div>
+
+          <!-- Chat Input -->
+          <form class="chat-input-form" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." maxlength="300" autocomplete="off">
+            <button type="submit" class="chat-send-btn" id="btnSendChat" title="Gửi tin nhắn">
+              <i class="ph-bold ph-paper-plane-right"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB 2: Queue List -->
+        <div class="tab-pane" id="tabQueue">
+          <div class="queue-header-info">
+            <span>Danh sách bài sắp phát</span>
+            <button class="btn-text-action" id="btnOpenAddFromQueue">+ Thêm bài mới</button>
+          </div>
+          <div class="queue-list" id="queueList">
+            <div class="queue-empty-state">
+              <i class="ph ph-music-notes-simple"></i>
+              <p>Hàng chờ đang trống</p>
+              <span>Hãy chọn 1 bài hát yêu thích để phát tiếp theo!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Add Song -->
+        <div class="tab-pane" id="tabAdd">
+          <div class="add-song-container">
+            <div class="add-card">
+              <div class="add-header">
+                <h3>Yêu Cầu Bài Hát</h3>
+                <p>Nhập link YouTube để thêm bài vào hàng chờ của Lounge.</p>
+              </div>
+
+              <!-- Cooldown Status Card -->
+              <div class="cooldown-card" id="cooldownCard">
+                <div class="cooldown-icon-box" id="cooldownIconBox">
+                  <i class="ph-fill ph-sparkle" id="cooldownIcon"></i>
+                </div>
+                <div class="cooldown-details">
+                  <h4 id="cooldownTitle">Ưu Đãi Lần Đầu Gia Nhập!</h4>
+                  <p id="cooldownSubtitle">Bạn được thêm ngay 1 bài hát mà không cần chờ.</p>
+                </div>
+                <div class="cooldown-countdown" id="cooldownTimerDisplay" style="display: none;">
+                  05:00
+                </div>
+              </div>
+
+              <!-- Add Form -->
+              <form class="add-song-form" id="addSongForm">
+                <div class="input-group">
+                  <label for="songUrlInput">Link Video / ID YouTube</label>
+                  <div class="input-with-icon">
+                    <i class="ph ph-link"></i>
+                    <input type="text" id="songUrlInput" placeholder="Ví dụ: https://www.youtube.com/watch?v=..." required autocomplete="off">
+                  </div>
+                  <span class="input-hint">Hỗ trợ link đầy đủ, youtu.be, Shorts, hoặc Video ID (11 ký tự).</span>
+                </div>
+
+                <button type="submit" class="submit-add-btn" id="btnSubmitAdd">
+                  <i class="ph-bold ph-plus"></i>
+                  <span id="btnSubmitAddText">Thêm Vào Hàng Chờ</span>
+                </button>
+              </form>
+
+              <!-- Quick Sample Picks -->
+              <div class="quick-picks-section">
+                <h4>Gợi ý bài hát nhanh:</h4>
+                <div class="quick-picks-list">
+                  <button class="pick-chip" data-url="https://www.youtube.com/watch?v=5qap5aO4i9A">
+                    💤 Lofi Girl Sleep Beats
+                  </button>
+                  <button class="pick-chip" data-url="https://www.youtube.com/watch?v=TURbeWK2wwg">
+                    🌃 Tokyo Night Drive
+                  </button>
+                  <button class="pick-chip" data-url="https://www.youtube.com/watch?v=DWcJFNfaw90">
+                    ☕ Coffee Shop Chill
+                  </button>
+                  <button class="pick-chip" data-url="https://www.youtube.com/watch?v=rUxyKA_-grg">
+                    🌸 Japanese Garden Lofi
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: Favorites List -->
+        <div class="tab-pane" id="tabFavorites">
+          <div class="queue-header-info">
+            <span>Bài hát bạn đã lưu</span>
+            <span class="fav-sync-status" id="favSyncStatus">Supabase DB</span>
+          </div>
+          <div class="favorites-list" id="favoritesList">
+            <div class="queue-empty-state" id="favEmptyState">
+              <i class="ph ph-heart-break"></i>
+              <p>Chưa có bài hát yêu thích</p>
+              <span>Nhấn biểu tượng trái tim khi nghe bài hát để lưu lại vào bộ sưu tập của bạn!</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </main>
+  </div>
+
+  <!-- AUTH MODAL: Login & Register Tabs -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-box auth-modal-box">
+      <div class="modal-header">
+        <div class="auth-modal-nav">
+          <button class="auth-tab-btn active" id="authTabLogin">Đăng Nhập</button>
+          <button class="auth-tab-btn" id="authTabRegister">Đăng Ký Tài Khoản</button>
+        </div>
+        <button class="modal-close-btn" id="closeAuthModal"><i class="ph ph-x"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Auth Notification Alert -->
+        <div class="auth-alert" id="authAlert" style="display: none;"></div>
+
+        <!-- LOGIN FORM -->
+        <form class="auth-form" id="loginForm">
+          <div class="input-group">
+            <label for="loginInput">Tên người dùng hoặc Email</label>
+            <div class="input-with-icon">
+              <i class="ph ph-user"></i>
+              <input type="text" id="loginInput" placeholder="Nhập username hoặc email..." required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="loginPasswordInput">Mật khẩu</label>
+            <div class="input-with-icon">
+              <i class="ph ph-lock"></i>
+              <input type="password" id="loginPasswordInput" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-auth" id="btnLoginSubmit">
+            <i class="ph-bold ph-sign-in"></i> Đăng Nhập
+          </button>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form class="auth-form" id="registerForm" style="display: none;">
+          <div class="input-group">
+            <label for="regUsernameInput">Tên người dùng (Username)</label>
+            <div class="input-with-icon">
+              <i class="ph ph-user-plus"></i>
+              <input type="text" id="regUsernameInput" placeholder="Ví dụ: LofiMaster..." minlength="3" maxlength="25" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="regEmailInput">Địa chỉ Email</label>
+            <div class="input-with-icon">
+              <i class="ph ph-envelope"></i>
+              <input type="email" id="regEmailInput" placeholder="name@example.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="regPasswordInput">Mật khẩu (Tối thiểu 6 ký tự)</label>
+            <div class="input-with-icon">
+              <i class="ph ph-lock-key"></i>
+              <input type="password" id="regPasswordInput" placeholder="Tạo mật khẩu an toàn..." minlength="6" required autocomplete="new-password">
+            </div>
+          </div>
+
+          <div class="avatar-select-section">
+            <label>Chọn Avatar ban đầu:</label>
+            <div class="avatar-options" id="regAvatarOptions">
+              <button type="button" class="avatar-opt selected" data-avatar="🎧">🎧</button>
+              <button type="button" class="avatar-opt" data-avatar="☕">☕</button>
+              <button type="button" class="avatar-opt" data-avatar="🐱">🐱</button>
+              <button type="button" class="avatar-opt" data-avatar="🌙">🌙</button>
+              <button type="button" class="avatar-opt" data-avatar="🎵">🎵</button>
+              <button type="button" class="avatar-opt" data-avatar="👾">👾</button>
+              <button type="button" class="avatar-opt" data-avatar="🌌">🌌</button>
+              <button type="button" class="avatar-opt" data-avatar="🦊">🦊</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-auth" id="btnRegisterSubmit">
+            <i class="ph-bold ph-user-plus"></i> Tạo Tài Khoản Ngay
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER PROFILE MODAL (Level, EXP, Role, Edit & Logout) -->
+  <div class="modal-backdrop" id="profileModal">
+    <div class="modal-box profile-modal-box">
+      <div class="modal-header">
+        <h3>Hồ Sơ Thành Viên</h3>
+        <button class="modal-close-btn" id="closeProfileModal"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-card-summary">
+          <div class="profile-avatar-big" id="modalProfileAvatar">🎧</div>
+          <div class="profile-info-big">
+            <div class="profile-title-row">
+              <h4 id="modalProfileUsername">Listener</h4>
+              <span class="role-badge" id="modalProfileRoleBadge">USER</span>
+            </div>
+            <p class="profile-email-tag" id="modalProfileEmail">email@example.com</p>
+            <div class="profile-xp-bar-container">
+              <div class="xp-labels">
+                <span id="modalProfileLevel">Level 1</span>
+                <span id="modalProfileXp">0 / 100 XP</span>
+              </div>
+              <div class="xp-track">
+                <div class="xp-fill" id="modalProfileXpFill" style="width: 10%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-stats-row">
+          <div class="stat-box">
+            <i class="ph-fill ph-music-notes"></i>
+            <span class="stat-num" id="modalTotalRequests">0</span>
+            <span class="stat-name">Bài đã thêm</span>
+          </div>
+          <div class="stat-box">
+            <i class="ph-fill ph-heart"></i>
+            <span class="stat-num" id="modalTotalFavorites">0</span>
+            <span class="stat-name">Bài yêu thích</span>
+          </div>
+          <div class="stat-box">
+            <i class="ph-fill ph-lightning"></i>
+            <span class="stat-num" id="modalCooldownBonus">5m</span>
+            <span class="stat-name">Thời gian chờ</span>
+          </div>
+        </div>
+
+        <div class="avatar-select-section">
+          <label>Đổi Avatar:</label>
+          <div class="avatar-options" id="avatarOptions">
+            <button class="avatar-opt" data-avatar="🎧">🎧</button>
+            <button class="avatar-opt" data-avatar="☕">☕</button>
+            <button class="avatar-opt" data-avatar="🐱">🐱</button>
+            <button class="avatar-opt" data-avatar="🌙">🌙</button>
+            <button class="avatar-opt" data-avatar="🎵">🎵</button>
+            <button class="avatar-opt" data-avatar="👾">👾</button>
+            <button class="avatar-opt" data-avatar="🌌">🌌</button>
+            <button class="avatar-opt" data-avatar="🦊">🦊</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="profileUsernameInput">Đổi tên hiển thị:</label>
+          <input type="text" id="profileUsernameInput" maxlength="25" placeholder="Nhập tên của bạn...">
+        </div>
+      </div>
+      <div class="modal-footer profile-modal-footer">
+        <button class="btn-logout" id="btnLogout"><i class="ph-bold ph-sign-out"></i> Đăng Xuất</button>
+        <button class="btn-save-profile" id="btnSaveProfile"><i class="ph-bold ph-check"></i> Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Socket.IO & YouTube IFrame API -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>

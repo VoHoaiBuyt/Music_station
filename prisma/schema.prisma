@@ -1,0 +1,91 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["music_station_db", "public"]
+}
+
+enum Role {
+  USER
+  VIP
+  DJ
+  MODERATOR
+  ADMIN
+
+  @@schema("music_station_db")
+}
+
+model User {
+  id            String        @id @default(uuid())
+  username      String        @unique
+  email         String        @unique
+  passwordHash  String
+  avatar        String        @default("🎧")
+  role          Role          @default(USER)
+  level         Int           @default(1)
+  xp            Int           @default(0)
+  totalRequests Int           @default(0)
+  isBanned      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  favorites     Favorite[]
+  songRequests  SongHistory[]
+  chatMessages  ChatMessage[]
+
+  @@map("users")
+  @@schema("music_station_db")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String
+  title     String
+  author    String?
+  thumbnail String?
+  duration  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId])
+  @@map("favorites")
+  @@schema("music_station_db")
+}
+
+model SongHistory {
+  id              String   @id @default(uuid())
+  videoId         String
+  title           String
+  author          String?
+  thumbnail       String?
+  duration        Int      @default(0)
+  requestedById   String?
+  requestedByName String   @default("Station Radio")
+  user            User?    @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  isDefault       Boolean  @default(false)
+  voteSkips       Int      @default(0)
+  playedAt        DateTime @default(now())
+
+  @@map("song_history")
+  @@schema("music_station_db")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  username  String
+  avatar    String   @default("🎧")
+  text      String
+  type      String   @default("user")
+  createdAt DateTime @default(now())
+
+  @@map("chat_messages")
+  @@schema("music_station_db")
+}
