@@ -1,8 +1,8 @@
 /**
  * ==========================================================================
  * LOFI & CHILL LOUNGE HUB - MULTI-ROOM CLIENT ENGINE
- * Features: Lobby Explorer, User Room Creation, Independent Persistent Rooms,
- * Synchronized YouTube Player, 10s Vote Skip, Live Chat & JWT Authentication.
+ * Features: Sảnh Lobby Explorer, Tạo Phòng Tự Do, Phòng Chạy Độc Lập Liên Tục,
+ * Đồng Bộ YouTube, Bình Chọn 10s Vote Skip, Chat Live & Xác Thực JWT Supabase.
  * ==========================================================================
  */
 
@@ -23,7 +23,6 @@ const appState = {
   activeRoomSlug: null,
   activeRoomData: null,
   allRooms: [],
-  selectedGenre: 'all',
   searchQuery: '',
   currentUser: null,
   guestUser: {
@@ -61,14 +60,12 @@ const DOM = {
 
   // Lobby Elements
   lobbySearchInput: document.getElementById('lobbySearchInput'),
-  genrePills: document.querySelectorAll('.genre-pill'),
   roomsGrid: document.getElementById('roomsGrid'),
   lobbyTotalRoomsBadge: document.getElementById('lobbyTotalRoomsBadge'),
   btnRefreshLobby: document.getElementById('btnRefreshLobby'),
 
   // Room Header Bar
   roomActiveTitle: document.getElementById('roomActiveTitle'),
-  roomActiveGenre: document.getElementById('roomActiveGenre'),
   roomActiveHost: document.getElementById('roomActiveHost'),
   listenerCount: document.getElementById('listenerCount'),
   btnShareRoom: document.getElementById('btnShareRoom'),
@@ -133,7 +130,6 @@ const DOM = {
   songUrlInput: document.getElementById('songUrlInput'),
   btnSubmitAdd: document.getElementById('btnSubmitAdd'),
   btnSubmitAddText: document.getElementById('btnSubmitAddText'),
-  presetTags: document.querySelectorAll('.preset-tag'),
 
   // Favorites Tab
   favTotalCount: document.getElementById('favTotalCount'),
@@ -156,11 +152,9 @@ const DOM = {
   createRoomForm: document.getElementById('createRoomForm'),
   createRoomAlert: document.getElementById('createRoomAlert'),
   newRoomName: document.getElementById('newRoomName'),
-  newRoomGenre: document.getElementById('newRoomGenre'),
   newRoomDesc: document.getElementById('newRoomDesc'),
   newRoomCoverUrl: document.getElementById('newRoomCoverUrl'),
   coverPresets: document.querySelectorAll('.cover-preset'),
-  genreSugBtns: document.querySelectorAll('.genre-sug-btn'),
 
   // Modals: Auth
   btnOpenAuthModal: document.getElementById('btnOpenAuthModal'),
@@ -460,17 +454,11 @@ function renderLobbyRooms() {
 
   let filtered = appState.allRooms;
 
-  // Filter by genre
-  if (appState.selectedGenre !== 'all') {
-    filtered = filtered.filter(r => r.genre === appState.selectedGenre);
-  }
-
   // Filter by search query
   if (appState.searchQuery.trim()) {
     const q = appState.searchQuery.toLowerCase().trim();
     filtered = filtered.filter(r => 
       r.name.toLowerCase().includes(q) || 
-      (r.genre && r.genre.toLowerCase().includes(q)) || 
       (r.creatorName && r.creatorName.toLowerCase().includes(q))
     );
   }
@@ -494,7 +482,6 @@ function renderLobbyRooms() {
 
     const npTrack = room.currentTrack;
     const npTitle = npTrack ? npTrack.title : 'Đang chuẩn bị danh sách phát...';
-    const npAuthor = npTrack ? npTrack.author : 'Station Radio';
     const npThumb = (npTrack && npTrack.thumbnail) ? npTrack.thumbnail : room.coverUrl;
 
     card.innerHTML = `
@@ -503,7 +490,6 @@ function renderLobbyRooms() {
         <div class="room-card-cover-overlay"></div>
         <div class="room-card-badges">
           <span class="room-live-badge"><span class="live-pulse"></span> LIVE</span>
-          <span class="room-genre-badge">${escapeHtml(room.genre || 'Lofi')}</span>
         </div>
         <div class="room-card-listeners">
           <i class="ph-fill ph-users"></i>
@@ -584,7 +570,6 @@ function initSocket() {
 
   socket.on('connect', () => {
     console.log('⚡ Connected to Station Realtime Server!');
-    // If on a room page, join room immediately
     if (appState.currentView === 'room' && appState.activeRoomSlug) {
       socket.emit('join_room', { slug: appState.activeRoomSlug });
     }
@@ -599,7 +584,6 @@ function initSocket() {
 
     // Update Room Header
     DOM.roomActiveTitle.textContent = data.room.name;
-    DOM.roomActiveGenre.textContent = data.room.genre;
     DOM.roomActiveHost.textContent = data.room.creatorName || 'Station Master';
     DOM.listenerCount.textContent = data.onlineCount || 1;
 
@@ -1081,16 +1065,6 @@ function setupEventListeners() {
     renderLobbyRooms();
   });
 
-  // Genre Filter Pills
-  DOM.genrePills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      DOM.genrePills.forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      appState.selectedGenre = pill.dataset.genre;
-      renderLobbyRooms();
-    });
-  });
-
   DOM.btnRefreshLobby.addEventListener('click', () => {
     loadLobbyRooms();
     showToast('🔄 Đã làm mới danh sách phòng nhạc!', 'success');
@@ -1232,14 +1206,6 @@ function setupEventListeners() {
   DOM.btnOpenAddModal.addEventListener('click', () => switchTab('add'));
   DOM.btnOpenAddFromQueue.addEventListener('click', () => switchTab('add'));
 
-  // Preset Song Tags
-  DOM.presetTags.forEach(btn => {
-    btn.addEventListener('click', () => {
-      DOM.songUrlInput.value = btn.dataset.url;
-      DOM.songUrlInput.focus();
-    });
-  });
-
   // Add Song Form Submit
   DOM.addSongForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1299,20 +1265,13 @@ function setupEventListeners() {
     DOM.createRoomModal.style.display = 'none';
   });
 
-  // Genre Suggestions Click
-  DOM.genreSugBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      DOM.newRoomGenre.value = btn.dataset.val;
-    });
-  });
-
   // Cover Presets Click
   DOM.coverPresets.forEach(preset => {
     preset.addEventListener('click', () => {
       DOM.coverPresets.forEach(p => p.classList.remove('selected'));
       preset.classList.add('selected');
       selectedCoverUrl = preset.dataset.url;
-      DOM.newRoomCoverUrl.value = '';
+      if (DOM.newRoomCoverUrl) DOM.newRoomCoverUrl.value = '';
     });
   });
 
@@ -1320,9 +1279,8 @@ function setupEventListeners() {
   DOM.createRoomForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = DOM.newRoomName.value.trim();
-    const genre = DOM.newRoomGenre.value.trim();
-    const description = DOM.newRoomDesc.value.trim();
-    const customCover = DOM.newRoomCoverUrl.value.trim();
+    const description = DOM.newRoomDesc ? DOM.newRoomDesc.value.trim() : '';
+    const customCover = DOM.newRoomCoverUrl ? DOM.newRoomCoverUrl.value.trim() : '';
     const coverUrl = customCover || selectedCoverUrl;
 
     if (!name) return;
@@ -1330,7 +1288,7 @@ function setupEventListeners() {
     try {
       const res = await apiRequest('/api/rooms', {
         method: 'POST',
-        body: JSON.stringify({ name, genre, description, coverUrl })
+        body: JSON.stringify({ name, description, coverUrl })
       });
 
       if (res.success && res.data) {
@@ -1588,7 +1546,7 @@ function escapeHtml(str) {
 // 12. App Initialization
 // ==========================================
 async function initApp() {
-  console.log('🎧 Initializing Lofi Lounge Hub Client...');
+  console.log('🎧 Initializing Lofi Lounge Hub Client (v2.0.0)...');
 
   setupEventListeners();
   checkAuthSession();
@@ -1600,6 +1558,7 @@ async function initApp() {
     const slug = hash.replace('#room-', '');
     switchView('room', slug);
   } else {
+    // DEFAULT VIEW: Sảnh các phòng nhạc
     switchView('lobby');
   }
 }

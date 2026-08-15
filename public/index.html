@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lofi Lounge Hub - Sảnh Đa Phòng Nhạc Trực Tuyến Độc Lập</title>
+  <title>Lofi Lounge Hub - Sảnh Đa Phòng Nhạc Trực Tuyến</title>
   <meta name="description" content="Nền tảng sảnh nghe nhạc trực tuyến đa phòng độc lập với CSDL Supabase PostgreSQL, xác thực JWT, tạo phòng cá nhân, đồng bộ YouTube và chat thời gian thực.">
   
   <!-- Google Fonts -->
@@ -14,8 +14,8 @@
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-  <!-- Stylesheet -->
-  <link rel="stylesheet" href="styles.css">
+  <!-- Stylesheet with Cache-busting -->
+  <link rel="stylesheet" href="styles.css?v=2.0.0">
 </head>
 <body class="dark-theme">
   <!-- Ambient Glow Background -->
@@ -91,44 +91,21 @@
         <div class="hero-content">
           <div class="hero-tag">
             <i class="ph-fill ph-sparkle"></i>
-            <span>NỀN TẢNG SẢNH NHẠC ĐA PHÒNG LIÊN TỤC</span>
+            <span>SẢNH NGHE NHẠC ĐA PHÒNG LIÊN TỤC</span>
           </div>
-          <h1 class="hero-title">Khám Phá Các Phòng Nhạc Độc Lập</h1>
-          <p class="hero-desc">Mỗi phòng nhạc chạy riêng biệt, luân chuyển liên tục và lưu trữ thời gian thực trên Supabase. Bạn có thể tự do tạo không gian âm nhạc riêng cho mình và bạn bè!</p>
+          <h1 class="hero-title">Sảnh Các Phòng Nhạc Trực Tuyến</h1>
+          <p class="hero-desc">Mỗi phòng nhạc chạy độc lập và lưu trữ bền vững trên Supabase. Bạn có thể tự do tạo phòng nhạc riêng, phát bất kỳ bài hát nào từ YouTube mà không bị mất dữ liệu khi thoát ra!</p>
         </div>
 
         <div class="hero-actions">
           <div class="lobby-search-bar">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="text" id="lobbySearchInput" placeholder="Tìm kiếm phòng nhạc, thể loại hoặc người tạo..." autocomplete="off">
+            <input type="text" id="lobbySearchInput" placeholder="Tìm kiếm tên phòng hoặc chủ phòng..." autocomplete="off">
           </div>
         </div>
       </div>
 
-      <!-- Genre Filter Pills -->
-      <div class="genre-filter-bar">
-        <button class="genre-pill active" data-genre="all">
-          <i class="ph-fill ph-fire"></i>
-          <span>Tất Cả Thể Loại</span>
-        </button>
-        <button class="genre-pill" data-genre="Lofi & Chill">
-          <span>🎧 Lofi & Chill</span>
-        </button>
-        <button class="genre-pill" data-genre="Cyberpunk & Synth">
-          <span>🌃 Cyberpunk & Synth</span>
-        </button>
-        <button class="genre-pill" data-genre="Coffee & Acoustic">
-          <span>☕ Coffee & Acoustic</span>
-        </button>
-        <button class="genre-pill" data-genre="Anime & Piano">
-          <span>🌸 Anime & Piano</span>
-        </button>
-        <button class="genre-pill" data-genre="Pop / Rap">
-          <span>🔥 Pop / Rap / R&B</span>
-        </button>
-      </div>
-
-      <!-- Rooms Grid Container -->
+      <!-- Rooms Grid Section -->
       <div class="rooms-grid-section">
         <div class="rooms-grid-header">
           <h2 class="rooms-grid-title">
@@ -158,13 +135,12 @@
         <div class="room-top-left">
           <button class="btn-back-to-lobby" id="btnBackToLobby" title="Quay lại Sảnh khám phá">
             <i class="ph-bold ph-arrow-left"></i>
-            <span>Về Sảnh</span>
+            <span>⬅️ Quay Lại Sảnh</span>
           </button>
 
           <div class="room-header-meta">
             <div class="room-header-title-row">
               <h1 class="room-header-title" id="roomActiveTitle">Lofi Study & Relax Beats</h1>
-              <span class="genre-tag" id="roomActiveGenre">Lofi & Chill</span>
             </div>
             <div class="room-header-sub">
               <span>Chủ phòng: <strong id="roomActiveHost">Station Master</strong></span>
@@ -396,18 +372,7 @@
               <label for="songUrlInput">Link YouTube hoặc Mã Video (11 ký tự):</label>
               <div class="input-with-icon">
                 <i class="ph ph-link"></i>
-                <input type="text" id="songUrlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" required>
-              </div>
-            </div>
-
-            <!-- Preset Suggestions -->
-            <div class="preset-suggestions">
-              <span class="preset-label">Gợi ý bài hay theo phòng:</span>
-              <div class="preset-tags" id="roomPresetTags">
-                <button type="button" class="preset-tag" data-url="https://www.youtube.com/watch?v=jfKfPfyJRdk">📚 Lofi Girl Study</button>
-                <button type="button" class="preset-tag" data-url="https://www.youtube.com/watch?v=TURbeWK2wwg">🌃 Tokyo Night Drive</button>
-                <button type="button" class="preset-tag" data-url="https://www.youtube.com/watch?v=DWcJFNfaw90">☕ Coffee Shop Lofi</button>
-                <button type="button" class="preset-tag" data-url="https://www.youtube.com/watch?v=M_fSg-zJ1eA">🌸 Ghibli Piano Relax</button>
+                <input type="text" id="songUrlInput" placeholder="Dán link YouTube (ví dụ: https://www.youtube.com/watch?v=...)" autocomplete="off" required>
               </div>
             </div>
 
@@ -480,7 +445,7 @@
       <div class="modal-header">
         <div class="modal-title-stack">
           <h3 class="modal-title">✨ Tạo Phòng Nhạc Mới</h3>
-          <p class="modal-subtitle">Tự do đặt tên và thể loại để tạo không gian âm nhạc độc lập của bạn</p>
+          <p class="modal-subtitle">Tự do đặt tên phòng để tạo không gian âm nhạc độc lập của bạn</p>
         </div>
         <button class="btn-close-modal" id="btnCloseCreateRoomModal"><i class="ph-bold ph-x"></i></button>
       </div>
@@ -493,32 +458,14 @@
           <label for="newRoomName">Tên phòng nhạc: <span class="required-star">*</span></label>
           <div class="input-with-icon">
             <i class="ph ph-music-notes"></i>
-            <input type="text" id="newRoomName" placeholder="Ví dụ: Quán Cà Phê Mưa Lofi, K-Pop Chill Lounge..." maxlength="100" required>
-          </div>
-        </div>
-
-        <!-- Room Genre (Tự do đặt thể loại / Chọn gợi ý) -->
-        <div class="form-group">
-          <label for="newRoomGenre">Thể loại âm nhạc: <span class="required-star">*</span></label>
-          <div class="input-with-icon">
-            <i class="ph ph-tag"></i>
-            <input type="text" id="newRoomGenre" placeholder="Tự do nhập (Lofi, Anime, Pop, Cyberpunk, Rap, EDM...)" value="Lofi & Chill" required>
-          </div>
-          <!-- Quick Genre Selector -->
-          <div class="genre-suggestions">
-            <span class="genre-sug-btn" data-val="Lofi & Chill">🎧 Lofi & Chill</span>
-            <span class="genre-sug-btn" data-val="Cyberpunk & Synth">🌃 Cyberpunk & Synth</span>
-            <span class="genre-sug-btn" data-val="Coffee & Acoustic">☕ Coffee & Acoustic</span>
-            <span class="genre-sug-btn" data-val="Anime & Piano">🌸 Anime & Piano</span>
-            <span class="genre-sug-btn" data-val="Pop / R&B">🔥 Pop / R&B</span>
-            <span class="genre-sug-btn" data-val="Học Tập & Thư Giãn">📚 Học Tập</span>
+            <input type="text" id="newRoomName" placeholder="Ví dụ: Phòng Nhạc Của Buýt, Chill Đêm Khuya..." maxlength="100" required>
           </div>
         </div>
 
         <!-- Room Description -->
         <div class="form-group">
           <label for="newRoomDesc">Mô tả phòng (tuỳ chọn):</label>
-          <input type="text" id="newRoomDesc" placeholder="Mô tả không gian và giai điệu của phòng..." maxlength="200">
+          <input type="text" id="newRoomDesc" placeholder="Mô tả không gian phòng nhạc của bạn..." maxlength="200">
         </div>
 
         <!-- Cover Image Preset Picker -->
@@ -717,7 +664,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <!-- Socket.IO Client -->
   <script src="/socket.io/socket.io.js"></script>
-  <!-- Main Application Script -->
-  <script src="app.js"></script>
+  <!-- Main Application Script with Cache-busting -->
+  <script src="app.js?v=2.0.0"></script>
 </body>
 </html>
