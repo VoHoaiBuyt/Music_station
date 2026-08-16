@@ -308,12 +308,19 @@ function setupStationSockets(io) {
       room.playNextTrack('admin_skip');
     });
 
-    // Client track ended (fallback notification)
+    // Client track ended or error (fallback notification)
     socket.on('client_track_ended', (data) => {
       const room = roomManager.getRoom(currentRoomSlug);
       if (!room || !room.currentTrack) return;
 
       if (data?.trackId === room.currentTrack.id) {
+        if (data?.error) {
+          console.warn(`[Room ${room.slug}] Track "${room.currentTrack.title}" encountered player error (${data.error}), auto-skipping.`);
+          room.broadcastSystemMessage(`⚠️ Bài hát "${room.currentTrack.title}" gặp lỗi bản quyền/phát nhúng trên YouTube, hệ thống đang chuyển bài...`, '⚠️');
+          room.playNextTrack('client_error_skip');
+          return;
+        }
+
         const elapsed = (Date.now() - room.currentTrack.startTime) / 1000;
         if (elapsed >= (room.currentTrack.duration - 5)) {
           room.playNextTrack('client_ended');
