@@ -73,6 +73,7 @@ const DOM = {
   roomActiveHost: document.getElementById('roomActiveHost'),
   listenerCount: document.getElementById('listenerCount'),
   btnShareRoom: document.getElementById('btnShareRoom'),
+  btnTransferOwnership: document.getElementById('btnTransferOwnership'),
   btnAdminInstantSkip: document.getElementById('btnAdminInstantSkip'),
   btnDeleteRoom: document.getElementById('btnDeleteRoom'),
 
@@ -172,6 +173,12 @@ const DOM = {
   joinPrivateAlert: document.getElementById('joinPrivateAlert'),
   joinPrivateRoomSub: document.getElementById('joinPrivateRoomSub'),
   btnCloseJoinPrivateModal: document.getElementById('btnCloseJoinPrivateModal'),
+
+  // Modals: Transfer Ownership
+  transferOwnershipModal: document.getElementById('transferOwnershipModal'),
+  btnCloseTransferModal: document.getElementById('btnCloseTransferModal'),
+  transferAlert: document.getElementById('transferAlert'),
+  transferListenersList: document.getElementById('transferListenersList'),
 
   // Modals: Auth
   btnOpenAuthModal: document.getElementById('btnOpenAuthModal'),
@@ -673,10 +680,8 @@ function initSocket() {
     DOM.roomActiveHost.textContent = data.room.creatorName || 'Station Master';
     DOM.listenerCount.textContent = data.onlineCount || 1;
 
-    // Show / Hide Delete & Admin Skip buttons
-    const isOwnerOrAdmin = (appState.currentUser && (appState.currentUser.role === 'ADMIN' || appState.currentUser.id === data.room.creatorId));
-    DOM.btnAdminInstantSkip.style.display = isOwnerOrAdmin ? 'flex' : 'none';
-    DOM.btnDeleteRoom.style.display = (isOwnerOrAdmin && !data.room.isDefault) ? 'flex' : 'none';
+    // Show / Hide Controls (Owner & Admin)
+    updateRoomControlsVisibility(data.room);
 
     // Render Chat History
     DOM.chatMessages.innerHTML = '';
@@ -757,6 +762,29 @@ function initSocket() {
   // Private room password required
   socket.on('room_password_required', (data) => {
     openJoinPrivateRoomModal(data.slug, data.name);
+  });
+
+  // Ownership transferred real-time
+  socket.on('ownership_transferred', (data) => {
+    if (data.slug !== appState.activeRoomSlug) return;
+    DOM.roomActiveHost.textContent = data.newCreatorName;
+    if (appState.activeRoomData) {
+      appState.activeRoomData.creatorId = data.newCreatorId;
+      appState.activeRoomData.creatorName = data.newCreatorName;
+    }
+    updateRoomControlsVisibility(appState.activeRoomData || data.room);
+
+    if (appState.currentUser && appState.currentUser.id === data.newCreatorId) {
+      showToast('👑 Bạn đã được trao quyền Chủ phòng của phòng nhạc này!', 'success');
+    }
+  });
+
+  // Room deleted / disbanded
+  socket.on('room_deleted', (data) => {
+    if (data.slug === appState.activeRoomSlug) {
+      showToast(`📢 ${data.message || 'Phòng nhạc đã bị giải tán/xoá.'}`, 'warning');
+      switchView('lobby');
+    }
   });
 
   socket.on('room_error', (data) => {
@@ -950,65 +978,61 @@ function updateCooldownUI(cooldown) {
 
   if (appState.roomState.cooldown.timerInterval) {
     clearInterval(appState.roomState.cooldown.timerInterval);
+    appState.roomState.cooldown.timerInterval = null;
   }
 
   appState.roomState.cooldown = { ...appState.roomState.cooldown, ...cooldown };
 
   if (cooldown.isAdmin) {
-    DOM.tabCooldownPill.textContent = 'Admin Bypass';
-    DOM.cooldownCard.className = 'cooldown-card ready';
-    DOM.cooldownIcon.className = 'ph-fill ph-lightning';
-    DOM.cooldownTitle.textContent = 'Đặc Quyền Quản Trị / Chủ Phòng';
-    DOM.cooldownSubtitle.textContent = 'Bạn có thể thêm bài liên tục không giới hạn thời gian chờ.';
-    DOM.cooldownTimerDisplay.style.display = 'none';
-    DOM.btnSubmitAdd.disabled = false;
-    DOM.btnSubmitAddText.textContent = 'Thêm Vào Hàng Chờ';
+    if (DOM.tabCooldownPill) DOM.tabCooldownPill.textContent = 'Admin Bypass';
+    if (DOM.cooldownCard) DOM.cooldownCard.className = 'cooldown-card ready';
+    if (DOM.cooldownIcon) DOM.cooldownIcon.className = 'ph-fill ph-lightning';
+    if (DOM.cooldownTitle) DOM.cooldownTitle.textContent = 'Đặc Quyền Quản Trị / Chủ Phòng';
+    if (DOM.cooldownSubtitle) DOM.cooldownSubtitle.textContent = 'Bạn có thể thêm bài liên tục không giới hạn thời gian chờ.';
+    if (DOM.cooldownTimerDisplay) DOM.cooldownTimerDisplay.style.display = 'none';
     return;
   }
 
   if (cooldown.isFirstBonus) {
-    DOM.tabCooldownPill.textContent = 'Ưu đãi Lần 1';
-    DOM.cooldownCard.className = 'cooldown-card ready';
-    DOM.cooldownIcon.className = 'ph-fill ph-sparkle';
-    DOM.cooldownTitle.textContent = 'Ưu Đãi Lần Đầu Gia Nhập!';
-    DOM.cooldownSubtitle.textContent = 'Bạn được thêm ngay 1 bài hát mà không cần chờ.';
-    DOM.cooldownTimerDisplay.style.display = 'none';
-    DOM.btnSubmitAdd.disabled = false;
-    DOM.btnSubmitAddText.textContent = 'Thêm Vào Hàng Chờ';
+    if (DOM.tabCooldownPill) DOM.tabCooldownPill.textContent = 'Ưu đãi Lần 1';
+    if (DOM.cooldownCard) DOM.cooldownCard.className = 'cooldown-card ready';
+    if (DOM.cooldownIcon) DOM.cooldownIcon.className = 'ph-fill ph-sparkle';
+    if (DOM.cooldownTitle) DOM.cooldownTitle.textContent = 'Ưu Đãi Lần Đầu Gia Nhập!';
+    if (DOM.cooldownSubtitle) DOM.cooldownSubtitle.textContent = 'Bạn được thêm ngay 1 bài hát mà không cần chờ.';
+    if (DOM.cooldownTimerDisplay) DOM.cooldownTimerDisplay.style.display = 'none';
     return;
   }
 
   if (cooldown.canAdd) {
-    DOM.tabCooldownPill.textContent = 'Sẵn sàng';
-    DOM.cooldownCard.className = 'cooldown-card ready';
-    DOM.cooldownIcon.className = 'ph-fill ph-check-circle';
-    DOM.cooldownTitle.textContent = 'Thời Gian Chờ Đã Kết Thúc!';
-    DOM.cooldownSubtitle.textContent = 'Bạn có thể yêu cầu bài hát tiếp theo ngay bây giờ.';
-    DOM.cooldownTimerDisplay.style.display = 'none';
-    DOM.btnSubmitAdd.disabled = false;
-    DOM.btnSubmitAddText.textContent = 'Thêm Vào Hàng Chờ';
+    if (DOM.tabCooldownPill) DOM.tabCooldownPill.textContent = 'Sẵn sàng';
+    if (DOM.cooldownCard) DOM.cooldownCard.className = 'cooldown-card ready';
+    if (DOM.cooldownIcon) DOM.cooldownIcon.className = 'ph-fill ph-check-circle';
+    if (DOM.cooldownTitle) DOM.cooldownTitle.textContent = 'Thời Gian Chờ Đã Kết Thúc!';
+    if (DOM.cooldownSubtitle) DOM.cooldownSubtitle.textContent = 'Bạn có thể yêu cầu bài hát tiếp theo ngay bây giờ.';
+    if (DOM.cooldownTimerDisplay) DOM.cooldownTimerDisplay.style.display = 'none';
   } else {
-    DOM.cooldownCard.className = 'cooldown-card waiting';
-    DOM.cooldownIcon.className = 'ph-fill ph-timer';
-    DOM.cooldownTitle.textContent = 'Đang Trong Thời Gian Chờ';
-    DOM.cooldownSubtitle.textContent = 'Vui lòng chờ hết thời gian để tiếp tục thêm bài mới.';
-    DOM.cooldownTimerDisplay.style.display = 'block';
-    DOM.btnSubmitAdd.disabled = true;
+    if (DOM.cooldownCard) DOM.cooldownCard.className = 'cooldown-card waiting';
+    if (DOM.cooldownIcon) DOM.cooldownIcon.className = 'ph-fill ph-timer';
+    if (DOM.cooldownTitle) DOM.cooldownTitle.textContent = 'Đang Trong Thời Gian Chờ';
+    if (DOM.cooldownSubtitle) DOM.cooldownSubtitle.textContent = 'Vui lòng chờ hết thời gian để tiếp tục thêm bài mới.';
+    if (DOM.cooldownTimerDisplay) DOM.cooldownTimerDisplay.style.display = 'block';
 
-    let remaining = cooldown.remainingSeconds;
+    let remaining = Math.max(0, cooldown.remainingSeconds || 0);
 
     const tick = () => {
       if (remaining <= 0) {
-        clearInterval(appState.roomState.cooldown.timerInterval);
+        if (appState.roomState.cooldown.timerInterval) {
+          clearInterval(appState.roomState.cooldown.timerInterval);
+          appState.roomState.cooldown.timerInterval = null;
+        }
         updateCooldownUI({ canAdd: true, remainingSeconds: 0 });
         return;
       }
       const mins = Math.floor(remaining / 60);
       const secs = remaining % 60;
       const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-      DOM.cooldownTimerDisplay.textContent = formatted;
-      DOM.tabCooldownPill.textContent = formatted;
-      DOM.btnSubmitAddText.textContent = `Chờ ${formatted}`;
+      if (DOM.cooldownTimerDisplay) DOM.cooldownTimerDisplay.textContent = formatted;
+      if (DOM.tabCooldownPill) DOM.tabCooldownPill.textContent = formatted;
       remaining--;
     };
 
@@ -1203,9 +1227,48 @@ function setupEventListeners() {
     }
   });
 
+  // Transfer Ownership Button
+  if (DOM.btnTransferOwnership) {
+    DOM.btnTransferOwnership.addEventListener('click', () => {
+      openTransferModal();
+    });
+  }
+
+  if (DOM.btnCloseTransferModal) {
+    DOM.btnCloseTransferModal.addEventListener('click', () => {
+      DOM.transferOwnershipModal.style.display = 'none';
+    });
+  }
+
   // Delete Room (Owner / Admin)
   DOM.btnDeleteRoom.addEventListener('click', async () => {
-    if (!confirm('Bạn có chắc chắn muốn xoá phòng nhạc này không?')) return;
+    if (!appState.activeRoomSlug) return;
+    const isOwner = appState.currentUser && appState.currentUser.id === appState.activeRoomData?.creatorId;
+    const isAdmin = appState.currentUser && appState.currentUser.role === 'ADMIN';
+
+    if (!isOwner && !isAdmin) {
+      showToast('⚠️ Bạn không có quyền xoá phòng này!', 'error');
+      return;
+    }
+
+    // If host (non-admin), check if there are other listeners
+    if (!isAdmin && isOwner) {
+      try {
+        const res = await apiRequest(`/api/rooms/${appState.activeRoomSlug}/listeners`);
+        const listeners = (res.data || []).filter(u => u.userId !== appState.currentUser.id);
+        if (listeners.length > 0) {
+          if (confirm(`Phòng đang có ${listeners.length} người nghe khác!\n\nBạn có muốn chuyển quyền chủ phòng cho người khác để rời phòng và tạo phòng mới không?`)) {
+            openTransferModal();
+          }
+          return;
+        }
+      } catch (e) {
+        console.warn('Check listeners notice:', e.message);
+      }
+    }
+
+    if (!confirm('Bạn có chắc chắn muốn xoá phòng nhạc này vĩnh viễn không?')) return;
+
     try {
       const res = await apiRequest(`/api/rooms/${appState.activeRoomSlug}`, { method: 'DELETE' });
       if (res.success) {
@@ -1823,10 +1886,110 @@ function openProfileModal() {
 
   DOM.modalTotalRequests.textContent = u.totalRequests || 0;
   DOM.modalTotalFavorites.textContent = userFavorites.length;
-  DOM.modalCooldownBonus.textContent = (u.role === 'VIP' || u.role === 'DJ') ? '2 phút' : (u.role === 'ADMIN' ? '0 giây' : '5 phút');
+  DOM.modalCooldownBonus.textContent = (u.role === 'VIP' || u.role === 'DJ') ? '1 phút' : (u.role === 'ADMIN' ? '0 giây' : '3 phút');
 
   loadLeaderboard();
   DOM.profileModal.style.display = 'flex';
+}
+
+function updateRoomControlsVisibility(roomData) {
+  if (!roomData) return;
+  const isOwner = appState.currentUser && appState.currentUser.id === roomData.creatorId;
+  const isAdmin = appState.currentUser && appState.currentUser.role === 'ADMIN';
+
+  if (DOM.btnAdminInstantSkip) {
+    DOM.btnAdminInstantSkip.style.display = (isOwner || isAdmin) ? 'flex' : 'none';
+  }
+
+  if (DOM.btnTransferOwnership) {
+    DOM.btnTransferOwnership.style.display = (isOwner && !roomData.isDefault) ? 'flex' : 'none';
+  }
+
+  if (DOM.btnDeleteRoom) {
+    DOM.btnDeleteRoom.style.display = ((isOwner || isAdmin) && !roomData.isDefault) ? 'flex' : 'none';
+  }
+}
+
+function openTransferModal() {
+  if (!DOM.transferOwnershipModal) return;
+  DOM.transferAlert.style.display = 'none';
+  DOM.transferListenersList.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">Đang tải danh sách thành viên trong phòng...</div>';
+  DOM.transferOwnershipModal.style.display = 'flex';
+  loadTransferListeners();
+}
+
+async function loadTransferListeners() {
+  try {
+    const res = await apiRequest(`/api/rooms/${appState.activeRoomSlug}/listeners`);
+    if (!res.success || !res.data) {
+      DOM.transferListenersList.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted);">Không thể tải danh sách người nghe.</div>';
+      return;
+    }
+
+    const others = res.data.filter(u => u.userId !== appState.currentUser?.id);
+    if (others.length === 0) {
+      DOM.transferListenersList.innerHTML = `
+        <div style="text-align: center; padding: 28px 16px; color: var(--text-muted); font-size: 13px;">
+          <div style="font-size: 28px; margin-bottom: 8px;">🎧</div>
+          Hiện không có người nghe nào khác trong phòng.<br>Bạn có thể xoá phòng trực tiếp vì phòng đang trống!
+        </div>
+      `;
+      return;
+    }
+
+    DOM.transferListenersList.innerHTML = '';
+    others.forEach(userItem => {
+      const card = document.createElement('div');
+      card.className = 'transfer-listener-card';
+      card.innerHTML = `
+        <div class="transfer-listener-left">
+          <div class="transfer-listener-avatar">${escapeHtml(userItem.avatar || '🎧')}</div>
+          <div class="transfer-listener-meta">
+            <span class="transfer-listener-name">${escapeHtml(userItem.username)}</span>
+            <span class="role-badge ${escapeHtml(userItem.role || 'USER')}" style="align-self: flex-start; font-size: 9px; padding: 1px 6px;">${escapeHtml(userItem.role || 'USER')}</span>
+          </div>
+        </div>
+        <button class="btn-select-transfer" data-uid="${escapeHtml(userItem.userId)}" data-uname="${escapeHtml(userItem.username)}">
+          <i class="ph-fill ph-crown"></i>
+          <span>Chọn Làm Chủ Phòng</span>
+        </button>
+      `;
+
+      card.querySelector('.btn-select-transfer').addEventListener('click', async () => {
+        if (!confirm(`Bạn có chắc chắn muốn trao quyền chủ phòng cho "${userItem.username}" không?\nSau khi chuyển quyền, bạn có thể rời phòng và tạo phòng mới tuỳ ý.`)) return;
+
+        try {
+          const result = await apiRequest(`/api/rooms/${appState.activeRoomSlug}/transfer-ownership`, {
+            method: 'POST',
+            body: JSON.stringify({
+              targetUserId: userItem.userId,
+              targetUsername: userItem.username
+            })
+          });
+
+          if (result.success) {
+            showToast(`👑 Đã chuyển quyền chủ phòng cho ${userItem.username} thành công!`, 'success');
+            DOM.transferOwnershipModal.style.display = 'none';
+
+            if (appState.activeRoomData) {
+              appState.activeRoomData.creatorId = userItem.userId;
+              appState.activeRoomData.creatorName = userItem.username;
+            }
+            DOM.roomActiveHost.textContent = userItem.username;
+            updateRoomControlsVisibility(appState.activeRoomData);
+          }
+        } catch (err) {
+          DOM.transferAlert.textContent = err.message;
+          DOM.transferAlert.className = 'modal-alert error';
+          DOM.transferAlert.style.display = 'block';
+        }
+      });
+
+      DOM.transferListenersList.appendChild(card);
+    });
+  } catch (err) {
+    DOM.transferListenersList.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--accent-rose); font-size: 13px;">⚠️ ${err.message}</div>`;
+  }
 }
 
 // ==========================================
@@ -2001,6 +2164,16 @@ function renderYouTubeSearchResults(videos) {
         showToast('⚠️ Chưa kết nối phòng nhạc!', 'error');
         return;
       }
+
+      const isOwner = appState.currentUser && appState.currentUser.id === appState.activeRoomData?.creatorId;
+      const isAdmin = appState.currentUser && appState.currentUser.role === 'ADMIN';
+
+      if (!isAdmin && !isOwner && appState.roomState.cooldown && !appState.roomState.cooldown.canAdd) {
+        const remainingText = DOM.cooldownTimerDisplay ? DOM.cooldownTimerDisplay.textContent : 'thời gian';
+        showToast(`⏳ Vui lòng chờ hết thời gian (${remainingText}) trước khi yêu cầu thêm bài!`, 'warning');
+        return;
+      }
+
       socket.emit('add_to_queue', {
         urlOrId: v.videoId,
         duration: v.duration

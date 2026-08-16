@@ -10,6 +10,8 @@ router.post('/:slug/verify-password', roomController.verifyPassword);
 
 // Protected routes (Require Login)
 router.post('/', authenticateToken, roomController.createRoom);
+router.get('/:slug/listeners', authenticateToken, roomController.getRoomListeners);
+router.post('/:slug/transfer-ownership', authenticateToken, roomController.transferOwnership);
 router.delete('/:slug', authenticateToken, roomController.deleteRoom);
 
 module.exports = router;

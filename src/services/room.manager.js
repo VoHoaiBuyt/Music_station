@@ -485,6 +485,22 @@ class RoomInstance {
     return await bcrypt.compare(String(password), this.passwordHash);
   }
 
+  getOnlineUsers() {
+    const userMap = new Map();
+    for (const u of Object.values(this.users)) {
+      if (!userMap.has(u.userId)) {
+        userMap.set(u.userId, {
+          userId: u.userId,
+          username: u.username,
+          avatar: u.avatar,
+          role: u.role,
+          isGuest: u.isGuest
+        });
+      }
+    }
+    return Array.from(userMap.values());
+  }
+
   getSummary() {
     return {
       id: this.id,
@@ -610,18 +626,86 @@ class RoomManager {
     return created;
   }
 
+  async transferOwnership(slug, requesterUser, targetUserId, targetUsername) {
+    const room = this.rooms.get(slug);
+    if (!room) throw new Error('Phòng nhạc không tồn tại!');
+
+    const isAdmin = requesterUser && requesterUser.role === 'ADMIN';
+    const isOwner = requesterUser && requesterUser.id === room.creatorId;
+
+    if (!isAdmin && !isOwner) {
+      throw new Error('Bạn không có quyền chuyển quyền chủ phòng này!');
+    }
+
+    if (!targetUserId || !targetUsername) {
+      throw new Error('Vui lòng chọn thành viên nhận quyền chủ phòng!');
+    }
+
+    if (targetUserId === room.creatorId) {
+      throw new Error('Thành viên này hiện đã là chủ phòng!');
+    }
+
+    const oldCreatorName = room.creatorName;
+    room.creatorId = targetUserId;
+    room.creatorName = targetUsername;
+
+    // Update DB
+    await db.updateRoom(slug, {
+      creatorId: targetUserId,
+      creatorName: targetUsername
+    });
+
+    // Broadcast in-room system chat message
+    room.broadcastSystemMessage(`👑 ${oldCreatorName} đã chuyển giao quyền chủ phòng cho ${targetUsername}!`, '👑');
+
+    if (this.io) {
+      this.io.to(room.getRoomSocketNamespace()).emit('ownership_transferred', {
+        slug: room.slug,
+        newCreatorId: targetUserId,
+        newCreatorName: targetUsername,
+        room: room.getSummary()
+      });
+    }
+
+    this.broadcastLobbyUpdate();
+    return {
+      success: true,
+      newCreatorId: targetUserId,
+      newCreatorName: targetUsername
+    };
+  }
+
   async deleteRoom(slug, requesterUser) {
     const room = this.rooms.get(slug);
     if (!room) throw new Error('Phòng nhạc không tồn tại!');
 
-    const isOwner = (requesterUser && (requesterUser.id === room.creatorId || requesterUser.role === 'ADMIN'));
-    if (!isOwner) {
+    const isAdmin = requesterUser && requesterUser.role === 'ADMIN';
+    const isOwner = requesterUser && requesterUser.id === room.creatorId;
+
+    if (!isAdmin && !isOwner) {
       throw new Error('Bạn không có quyền xoá phòng nhạc này!');
+    }
+
+    // If host (non-admin) is deleting, check if there are other listeners present
+    if (!isAdmin && isOwner) {
+      const onlineListeners = room.getOnlineUsers();
+      const otherListeners = onlineListeners.filter(u => u.userId !== requesterUser.id);
+      if (otherListeners.length > 0) {
+        throw new Error(`Phòng đang có ${otherListeners.length} người nghe khác. Bạn vui lòng chuyển quyền chủ phòng cho thành viên khác để rời phòng, hoặc đợi phòng trống trước khi xoá!`);
+      }
+    }
+
+    // Notify all clients in the room before destroying
+    if (this.io) {
+      this.io.to(room.getRoomSocketNamespace()).emit('room_deleted', {
+        slug,
+        message: 'Phòng nhạc đã được xoá/giải tán.'
+      });
     }
 
     room.destroy();
     this.rooms.delete(slug);
-    await db.deleteRoom(slug);
+    await db.deleteRoom(slug, requesterUser.id, requesterUser.role);
 
     this.broadcastLobbyUpdate();
     return true;

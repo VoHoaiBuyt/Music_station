@@ -142,6 +142,11 @@
             <span>Chia Sẻ</span>
           </button>
           
+          <button class="btn-room-action btn-transfer-room" id="btnTransferOwnership" style="display: none;" title="Chuyển quyền chủ phòng cho người khác để rời phòng">
+            <i class="ph-fill ph-crown"></i>
+            <span>Chuyển Chủ Phòng</span>
+          </button>
+
           <button class="btn-room-action btn-admin-skip" id="btnAdminInstantSkip" style="display: none;" title="Bỏ qua bài hát tức thì (Admin / Chủ phòng)">
             <i class="ph-bold ph-lightning"></i>
             <span>Admin Skip</span>
@@ -149,6 +154,7 @@
 
           <button class="btn-room-action btn-delete-room" id="btnDeleteRoom" style="display: none;" title="Xoá phòng nhạc này">
             <i class="ph ph-trash"></i>
+            <span>Xoá Phòng</span>
           </button>
         </div>
       </div>
@@ -349,7 +355,7 @@
                 <span id="cooldownSubtitle">Mỗi người dùng cần chờ một khoảng thời gian trước khi yêu cầu bài tiếp theo.</span>
               </div>
             </div>
-            <div class="cooldown-timer-display" id="cooldownTimerDisplay" style="display: none;">05:00</div>
+            <div class="cooldown-timer-display" id="cooldownTimerDisplay" style="display: none;">03:00</div>
           </div>
 
           <!-- YouTube Song Search & Quick Add Section -->
@@ -566,6 +572,27 @@
           <span>Mở Khóa & Vào Phòng</span>
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- MODAL: CHUYỂN GIAO QUYỀN CHỦ PHÒNG                   -->
+  <!-- ==================================================== -->
+  <div class="modal-backdrop" id="transferOwnershipModal" style="display: none;">
+    <div class="modal-card transfer-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-stack">
+          <h3 class="modal-title"><i class="ph-fill ph-crown" style="color: var(--accent-amber);"></i> Chuyển Quyền Chủ Phòng</h3>
+          <p class="modal-subtitle">Chọn một thành viên trong phòng để giao quyền rồi rời phòng:</p>
+        </div>
+        <button class="btn-close-modal" id="btnCloseTransferModal"><i class="ph-bold ph-x"></i></button>
+      </div>
+
+      <div class="modal-alert" id="transferAlert" style="display: none;"></div>
+
+      <div class="transfer-listeners-container" id="transferListenersList">
+        <!-- Rendered dynamically -->
+      </div>
     </div>
   </div>
 

@@ -100,13 +100,54 @@ const roomController = {
     }
   },
 
+  // GET /api/rooms/:slug/listeners
+  getRoomListeners(req, res, next) {
+    try {
+      const { slug } = req.params;
+      const room = roomManager.getRoom(slug);
+      if (!room) {
+        return res.status(404).json({
+          success: false,
+          message: 'Phòng nhạc không tồn tại!'
+        });
+      }
+
+      const listeners = room.getOnlineUsers();
+      return res.json({
+        success: true,
+        data: listeners
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // POST /api/rooms/:slug/transfer-ownership
+  async transferOwnership(req, res, next) {
+    try {
+      const { slug } = req.params;
+      const { targetUserId, targetUsername } = req.body;
+      const user = req.user;
+
+      const result = await roomManager.transferOwnership(slug, user, targetUserId, targetUsername);
+
+      return res.json({
+        success: true,
+        message: `Đã chuyển quyền chủ phòng cho ${targetUsername} thành công!`,
+        data: result
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   // DELETE /api/rooms/:slug
   async deleteRoom(req, res, next) {
     try {
       const { slug } = req.params;
       const user = req.user;
 
-      await roomManager.deleteRoom(slug, user.id, user.role);
+      await roomManager.deleteRoom(slug, user);
 
       return res.json({
         success: true,

@@ -810,19 +810,20 @@ body {
 .station-main {
   display: grid;
   grid-template-columns: 1fr 380px;
-  gap: 16px;
+  gap: 10px;
   height: calc(100vh - 100px);
   min-height: 650px;
   animation: fadeIn 0.3s ease;
 }
 
-/* Room Top Navigation Sub-bar */
+/* Room Top Navigation Sub-bar (Compact) */
 .room-top-bar {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 18px;
+  padding: 4px 12px;
+  min-height: 40px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -831,20 +832,20 @@ body {
 .room-top-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .btn-back-to-lobby {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 4px;
+  padding: 4px 10px;
   background: var(--bg-surface-raised);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -859,23 +860,25 @@ body {
 .room-header-meta {
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 
 .room-header-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .room-header-title {
-  font-size: 16px;
+  font-size: 13.5px;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .genre-tag {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 1px 6px;
   background: rgba(168, 85, 247, 0.2);
   border: 1px solid rgba(168, 85, 247, 0.4);
   border-radius: var(--radius-full);
@@ -883,34 +886,36 @@ body {
 }
 
 .room-header-sub {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  line-height: 1.2;
 }
 
 .dot-separator {
   color: var(--text-muted);
+  font-size: 10px;
 }
 
 .room-top-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .btn-room-action {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 4px 10px;
   background: var(--bg-surface-raised);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -931,6 +936,17 @@ body {
   color: white;
 }
 
+.btn-transfer-room {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--accent-amber);
+}
+
+.btn-transfer-room:hover {
+  background: var(--accent-amber);
+  color: #000;
+}
+
 .btn-delete-room {
   color: var(--accent-rose);
 }
@@ -938,6 +954,87 @@ body {
 .btn-delete-room:hover {
   background: var(--accent-rose);
   color: white;
+}
+
+/* Transfer Ownership Modal */
+.transfer-modal-card {
+  max-width: 460px;
+}
+
+.transfer-listeners-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.transfer-listener-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.transfer-listener-card:hover {
+  border-color: var(--accent-primary);
+  background: rgba(36, 42, 62, 0.85);
+}
+
+.transfer-listener-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transfer-listener-avatar {
+  font-size: 22px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transfer-listener-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transfer-listener-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.btn-select-transfer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--gradient-btn);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-select-transfer:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
 }
 
 /* Stage Section */
