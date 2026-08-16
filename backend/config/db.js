@@ -26,7 +26,7 @@ async function initDatabase() {
   let client;
   try {
     client = await pool.connect();
-    const sqlPath = path.join(__dirname, '..', '..', 'prisma', 'init_supabase.sql');
+    const sqlPath = path.join(__dirname, '..', 'database', 'schema.sql');
     if (fs.existsSync(sqlPath)) {
       const sql = fs.readFileSync(sqlPath, 'utf8');
       await client.query(sql);

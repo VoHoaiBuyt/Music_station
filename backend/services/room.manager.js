@@ -2,42 +2,6 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const env = require('../config/env');
 
-// Helper: Extract YouTube ID
-function extractYouTubeId(urlOrId) {
-  if (!urlOrId || typeof urlOrId !== 'string') return null;
-  const trimmed = urlOrId.trim();
-  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = trimmed.match(regex);
-  return match ? match[1] : null;
-}
-
-// Helper: Fetch YouTube Metadata via oEmbed API
-async function fetchYouTubeMetadata(videoId) {
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
-
-  try {
-    const response = await fetch(oEmbedUrl, { signal: AbortSignal.timeout(4000) });
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        title: data.title || 'YouTube Music Track',
-        author: data.author_name || 'YouTube Creator',
-        thumbnail: data.thumbnail_url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-      };
-    }
-  } catch (err) {
-    console.warn(`[oEmbed] Failed metadata for ${videoId}:`, err.message);
-  }
-
-  return {
-    title: `YouTube Track (${videoId})`,
-    author: 'Unknown Artist',
-    thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-  };
-}
-
 // ==========================================
 // Independent Room Instance Class (100% User-Driven)
 // ==========================================
@@ -737,7 +701,5 @@ const roomManager = new RoomManager();
 
 module.exports = {
   roomManager,
-  RoomInstance,
-  extractYouTubeId,
-  fetchYouTubeMetadata
+  RoomInstance
 };

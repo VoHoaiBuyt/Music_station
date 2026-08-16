@@ -27,7 +27,6 @@
     "express-rate-limit": "^7.5.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.23.0",
-    "socket.io": "^4.8.1",
-    "yt-search": "^2.13.1"
+    "socket.io": "^4.8.1"
   }
 }

@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const db = require('../config/db');
-const { roomManager, extractYouTubeId, fetchYouTubeMetadata } = require('../services/room.manager');
+const { roomManager } = require('../services/room.manager');
+const YouTubeService = require('../services/youtube.service');
 
 function formatDuration(sec) {
   const m = Math.floor((sec || 0) / 60);
@@ -197,7 +198,7 @@ function setupStationSockets(io) {
       }
 
       const input = data?.urlOrId || '';
-      const videoId = extractYouTubeId(input);
+      const videoId = YouTubeService.extractVideoId(input);
 
       if (!videoId) {
         socket.emit('queue_error', { message: 'Đường dẫn hoặc YouTube ID không hợp lệ!' });
@@ -215,7 +216,7 @@ function setupStationSockets(io) {
       }
 
       try {
-        const meta = await fetchYouTubeMetadata(videoId);
+        const meta = await YouTubeService.getVideoDetails(videoId);
         let duration = parseInt(data?.duration, 10) || 240;
 
         // Role-based duration limits (Standard: 10m, VIP: 15m, Admin: 60m)
