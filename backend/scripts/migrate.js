@@ -16,7 +16,7 @@ async function migrate() {
     await client.connect();
     console.log('Connected to Supabase successfully!');
 
-    const sqlPath = path.join(__dirname, '..', 'prisma', 'init_supabase.sql');
+    const sqlPath = path.join(__dirname, '..', 'database', 'schema.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
     console.log('Executing schema initialization in schema: music_station_db...');

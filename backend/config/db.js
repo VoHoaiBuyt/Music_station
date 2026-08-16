@@ -352,7 +352,7 @@ const db = {
            SET "totalRequests" = "totalRequests" + 1, xp = xp + 25 
            WHERE id = $1`,
           [validUserId]
-        ).catch(() => {});
+        ).catch(() => { });
       }
 
       return res.rows[0];
@@ -396,7 +396,7 @@ const db = {
         await pool.query(
           `UPDATE music_station_db.users SET xp = xp + 2 WHERE id = $1`,
           [validUserId]
-        ).catch(() => {});
+        ).catch(() => { });
       }
     } catch (err) {
       console.warn('[DB addChatMessage error]:', err.message);
