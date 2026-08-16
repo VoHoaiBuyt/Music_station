@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const db = require('../src/config/db');
+const db = require('../config/db');
 
 async function seedAdmin() {
   console.log('⚡ Creating / Updating Super Admin user on Supabase PostgreSQL...');

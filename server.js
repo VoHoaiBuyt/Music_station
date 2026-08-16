@@ -4,14 +4,16 @@ const path = require('path');
 const cors = require('cors');
 const { Server } = require('socket.io');
 
-const env = require('./src/config/env');
-const db = require('./src/config/db');
-const authRoutes = require('./src/routes/auth.routes');
-const userRoutes = require('./src/routes/user.routes');
-const roomRoutes = require('./src/routes/room.routes');
-const errorHandler = require('./src/middleware/error.middleware');
-const { roomManager } = require('./src/services/room.manager');
-const setupStationSockets = require('./src/sockets/station.socket');
+const env = require('./backend/config/env');
+const db = require('./backend/config/db');
+const authRoutes = require('./backend/routes/auth.routes');
+const userRoutes = require('./backend/routes/user.routes');
+const roomRoutes = require('./backend/routes/room.routes');
+const adminRoutes = require('./backend/routes/admin.routes');
+const youtubeRoutes = require('./backend/routes/youtube.routes');
+const errorHandler = require('./backend/middleware/error.middleware');
+const { roomManager } = require('./backend/services/room.manager');
+const setupStationSockets = require('./backend/sockets/station.socket');
 
 const app = express();
 const server = http.createServer(app);
@@ -32,7 +34,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static frontend files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Health Check API
 app.get('/api/health', (req, res) => {
@@ -45,8 +47,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // REST API Routes
-const adminRoutes = require('./src/routes/admin.routes');
-const youtubeRoutes = require('./src/routes/youtube.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/rooms', roomRoutes);
@@ -58,7 +58,7 @@ app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
     return next();
   }
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
 });
 
 // Centralized Error Handler

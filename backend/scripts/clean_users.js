@@ -1,4 +1,4 @@
-const db = require('../src/config/db');
+const db = require('../config/db');
 
 async function cleanUsers() {
   console.log('⚡ Deleting all test users except Admin in Supabase PostgreSQL...');

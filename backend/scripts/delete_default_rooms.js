@@ -1,4 +1,4 @@
-const db = require('../src/config/db');
+const db = require('../config/db');
 
 async function removeAllDefaultRooms() {
   console.log('⚡ Removing all pre-existing / default rooms from Supabase PostgreSQL...');
