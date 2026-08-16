@@ -472,10 +472,7 @@ function logoutUser(showNotification = true) {
   }
   if (DOM.profileModal) DOM.profileModal.style.display = 'none';
   if (DOM.adminModal) DOM.adminModal.style.display = 'none';
-    initSocket();
-  }
-
-  if (notify) showToast('👋 Đã đăng xuất khỏi tài khoản.', 'success');
+  initSocket();
 }
 
 // ==========================================
