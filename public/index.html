@@ -1,21 +1,76 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" prefix="og: https://ogp.me/ns#">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lofi Lounge Hub - Sảnh Đa Phòng Nhạc Trực Tuyến</title>
-  <meta name="description" content="Nền tảng sảnh nghe nhạc trực tuyến đa phòng độc lập với CSDL Supabase PostgreSQL, xác thực JWT, tạo phòng cá nhân, đồng bộ YouTube và chat thời gian thực.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   
-  <!-- Google Fonts -->
+  <!-- Primary Meta Tags -->
+  <title>Music Room Hub - Sảnh Nghe Nhạc Trực Tuyến Đa Phòng Đồng Bộ</title>
+  <meta name="title" content="Music Room Hub - Sảnh Nghe Nhạc Trực Tuyến Đa Phòng Đồng Bộ">
+  <meta name="description" content="Khám phá và tham gia các phòng nghe nhạc trực tuyến đa phòng độc lập. Đồng bộ âm thanh YouTube thời gian thực, tự do tạo phòng cá nhân, chia sẻ playlist, biểu quyết bài hát và trò chuyện cùng bạn bè.">
+  <meta name="keywords" content="nghe nhạc cùng nhau, phòng nghe nhạc trực tuyến, lofi chill, lofi radio, nghe nhạc youtube đồng bộ, music room online, listen together, trạm âm nhạc, tạo phòng nhạc">
+  <meta name="author" content="Music Room Hub">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="theme-color" content="#0d0e15">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- Open Graph / Facebook / Zalo / Telegram -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://musicstation.up.railway.app/">
+  <meta property="og:title" content="Music Room Hub - Sảnh Nghe Nhạc Trực Tuyến Đa Phòng">
+  <meta property="og:description" content="Tham gia phòng nghe nhạc trực tuyến, đồng bộ YouTube thời gian thực, tự do tạo phòng và giao lưu âm nhạc cùng bạn bè!">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=1200&h=630&fit=crop&q=85">
+  <meta property="og:site_name" content="Music Room Hub">
+  <meta property="og:locale" content="vi_VN">
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://musicstation.up.railway.app/">
+  <meta name="twitter:title" content="Music Room Hub - Sảnh Nghe Nhạc Trực Tuyến Đa Phòng">
+  <meta name="twitter:description" content="Tham gia phòng nghe nhạc trực tuyến, đồng bộ YouTube thời gian thực, tự do tạo phòng và giao lưu âm nhạc cùng bạn bè!">
+  <meta name="twitter:image" content="https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=1200&h=630&fit=crop&q=85">
+
+  <!-- Favicon & PWA Manifest -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Preconnect & DNS-Prefetch for High Performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://i.ytimg.com">
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
+  <!-- Schema.org JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Music Room Hub",
+    "url": "https://musicstation.up.railway.app/",
+    "description": "Nền tảng nghe nhạc trực tuyến đa phòng độc lập với đồng bộ YouTube thời gian thực, tạo phòng âm nhạc cá nhân và trò chuyện trực tiếp.",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "All",
+    "inLanguage": "vi-VN",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "VND"
+    }
+  }
+  </script>
+
   <!-- Stylesheet with Cache-busting -->
-  <link rel="stylesheet" href="styles.css?v=2.0.0">
+  <link rel="stylesheet" href="styles.css?v=2.1.0">
 </head>
 <body class="dark-theme">
   <!-- Ambient Glow Background -->

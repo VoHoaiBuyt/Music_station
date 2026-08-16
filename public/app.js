@@ -644,6 +644,9 @@ function switchView(viewName, slug = null, password = null) {
     if (DOM.navBtnLobby) DOM.navBtnLobby.classList.add('active');
     if (DOM.navBtnLeaderboard) DOM.navBtnLeaderboard.classList.remove('active');
     
+    // Dynamic SEO title for Lobby
+    document.title = 'Music Room Hub - Sảnh Nghe Nhạc Trực Tuyến Đa Phòng Đồng Bộ';
+
     // Update URL to clean state
     history.replaceState(null, '', window.location.pathname);
     loadLobbyRooms();
@@ -711,10 +714,11 @@ function initSocket() {
     appState.roomState.queue = data.queue || [];
     appState.roomState.onlineCount = data.onlineCount || 1;
 
-    // Update Room Header
+    // Update Room Header & Title
     DOM.roomActiveTitle.textContent = data.room.name;
     DOM.roomActiveHost.textContent = data.room.creatorName || 'Station Master';
     DOM.listenerCount.textContent = data.onlineCount || 1;
+    document.title = `${data.room.name} 🎵 • Music Room Hub`;
 
     // Show / Hide Controls (Owner & Admin)
     updateRoomControlsVisibility(data.room);
