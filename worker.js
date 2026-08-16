@@ -6,8 +6,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Backend Node.js server URL (Configured in Cloudflare Dashboard Variables or fallback)
-    const backendOrigin = env.BACKEND_URL || "https://your-backend-server.up.railway.app";
+    // Backend Node.js server URL (Auto-prefix https:// if omitted)
+    let rawOrigin = (env && env.BACKEND_URL) ? env.BACKEND_URL.trim() : "https://musicstation-production.up.railway.app";
+    if (!rawOrigin.startsWith('http://') && !rawOrigin.startsWith('https://')) {
+      rawOrigin = 'https://' + rawOrigin;
+    }
+    const backendOrigin = rawOrigin.replace(/\/+$/, '');
 
     // 1. Proxy API & Real-time WebSocket to Node.js Backend Server
     if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) {
