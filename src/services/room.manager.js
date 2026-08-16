@@ -501,6 +501,21 @@ class RoomInstance {
     return Array.from(userMap.values());
   }
 
+  destroy() {
+    if (this.trackEndTimer) {
+      clearTimeout(this.trackEndTimer);
+      this.trackEndTimer = null;
+    }
+    if (this.activeVote && this.activeVote.timer) {
+      clearTimeout(this.activeVote.timer);
+      this.activeVote.timer = null;
+    }
+    this.currentTrack = null;
+    this.queue = [];
+    this.users = {};
+    this.chatHistory = [];
+  }
+
   getSummary() {
     return {
       id: this.id,

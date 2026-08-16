@@ -459,16 +459,19 @@ function updateHeaderUserUI(user) {
   }
 }
 
-function logoutUser(notify = true) {
+function logoutUser(showNotification = true) {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER);
   appState.currentUser = null;
   updateHeaderUserUI(null);
-  DOM.profileModal.style.display = 'none';
-  if (DOM.adminModal) DOM.adminModal.style.display = 'none';
+  userFavorites = [];
+  renderFavoritesList([]);
 
-  if (socket) {
-    socket.disconnect();
+  if (showNotification) {
+    showToast('👋 Đã đăng xuất thành công!', 'info');
+  }
+  if (DOM.profileModal) DOM.profileModal.style.display = 'none';
+  if (DOM.adminModal) DOM.adminModal.style.display = 'none';
     initSocket();
   }
 
@@ -653,6 +656,14 @@ function switchView(viewName, slug = null, password = null) {
     if (DOM.navBtnLobby) DOM.navBtnLobby.classList.remove('active');
     appState.activeRoomSlug = slug;
     
+    // Clean old room state before receiving snapshot from server
+    appState.roomState.currentTrack = null;
+    appState.roomState.queue = [];
+    DOM.chatMessages.innerHTML = '';
+    DOM.queueList.innerHTML = '';
+    updateTrackUI(null);
+    hideVoteBanner();
+
     // Update URL query parameter to ?room=slug
     history.replaceState(null, '', `?room=${encodeURIComponent(slug)}`);
 
@@ -669,14 +680,23 @@ function switchView(viewName, slug = null, password = null) {
 let socket = null;
 
 function initSocket() {
+  if (socket) {
+    try {
+      socket.removeAllListeners();
+      socket.disconnect();
+    } catch (e) {}
+    socket = null;
+  }
+
   const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+  const currentU = appState.currentUser;
   
   socket = io({
     auth: {
       token: token || null,
-      guestId: appState.guestUser.id,
-      guestName: appState.guestUser.username,
-      guestAvatar: appState.guestUser.avatar
+      guestId: currentU ? currentU.id : appState.guestUser.id,
+      guestName: currentU ? currentU.username : appState.guestUser.username,
+      guestAvatar: currentU ? currentU.avatar : appState.guestUser.avatar
     }
   });
 
@@ -714,8 +734,12 @@ function initSocket() {
 
     // Update Track Visuals
     if (data.currentTrack) {
+      appState.roomState.currentTrack = data.currentTrack;
       updateTrackUI(data.currentTrack);
       playCurrentStationTrack();
+    } else {
+      appState.roomState.currentTrack = null;
+      updateTrackUI(null);
     }
 
     if (data.activeVote && data.activeVote.active) {
@@ -737,6 +761,10 @@ function initSocket() {
       appState.roomState.currentTrack = data.currentTrack;
       updateTrackUI(data.currentTrack);
       if (isNew) playCurrentStationTrack();
+    } else {
+      appState.roomState.currentTrack = null;
+      updateTrackUI(null);
+      hideVoteBanner();
     }
 
     renderQueue(data.queue || []);
@@ -847,9 +875,9 @@ function initSocket() {
 // ==========================================
 function updateTrackUI(track) {
   if (!track) {
-    DOM.currentTitle.textContent = '🎵 Phòng đang chờ bài hát đầu tiên...';
-    DOM.currentTitle.title = 'Phòng đang chờ bài hát đầu tiên';
-    DOM.currentAuthor.textContent = 'Dán link YouTube ở tab Thêm Bài để bắt đầu phát nhạc!';
+    DOM.currentTitle.textContent = '🎵 Phòng đang chờ bài hát tiếp theo...';
+    DOM.currentTitle.title = 'Phòng đang chờ bài hát tiếp theo';
+    DOM.currentAuthor.textContent = 'Tìm hoặc dán link bài hát ở tab Thêm Bài để phát nhạc!';
     DOM.requesterName.textContent = 'Trống';
     const fallbackCover = appState.activeRoomData?.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&q=80';
     DOM.currentThumb.src = fallbackCover;
@@ -859,10 +887,16 @@ function updateTrackUI(track) {
     DOM.progressBarFill.style.width = '0%';
     DOM.vinylDisc.classList.remove('is-spinning');
     DOM.tonearm.classList.remove('is-playing');
-    if (ytReady && ytPlayer && ytPlayer.pauseVideo) {
-      try { ytPlayer.pauseVideo(); } catch (e) {}
+    if (ytReady && ytPlayer) {
+      try {
+        if (ytPlayer.stopVideo) ytPlayer.stopVideo();
+        else if (ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+      } catch (e) {}
     }
-    if (playbackSyncInterval) clearInterval(playbackSyncInterval);
+    if (playbackSyncInterval) {
+      clearInterval(playbackSyncInterval);
+      playbackSyncInterval = null;
+    }
     return;
   }
 
@@ -1650,9 +1684,9 @@ function setupEventListeners() {
         showToast(`🎉 Chào mừng ${res.data.user.username} quay trở lại!`, 'success');
 
         if (socket) {
-          socket.disconnect();
-          initSocket();
+          socket.emit('authenticate', { token: res.data.token });
         }
+        initSocket();
       }
     } catch (err) {
       DOM.authAlert.textContent = err.message;
@@ -1685,9 +1719,9 @@ function setupEventListeners() {
         showToast(`🎉 Tạo tài khoản thành công! Chào mừng ${res.data.user.username}!`, 'success');
 
         if (socket) {
-          socket.disconnect();
-          initSocket();
+          socket.emit('authenticate', { token: res.data.token });
         }
+        initSocket();
       }
     } catch (err) {
       DOM.authAlert.textContent = err.message;
@@ -1924,8 +1958,9 @@ function updateRoomControlsVisibility(roomData) {
   const isOwner = appState.currentUser && appState.currentUser.id === roomData.creatorId;
   const isAdmin = appState.currentUser && appState.currentUser.role === 'ADMIN';
 
+  // Admin Instant Skip is strictly for ADMIN accounts only
   if (DOM.btnAdminInstantSkip) {
-    DOM.btnAdminInstantSkip.style.display = (isOwner || isAdmin) ? 'flex' : 'none';
+    DOM.btnAdminInstantSkip.style.display = isAdmin ? 'flex' : 'none';
   }
 
   if (DOM.btnTransferOwnership) {
@@ -2307,7 +2342,7 @@ async function initApp() {
   console.log('🎧 Initializing Music Room Hub Client...');
 
   setupEventListeners();
-  checkAuthSession();
+  await checkAuthSession();
   initSocket();
 
   // Route handling based on URL query (?room=slug) or hash (#room-slug)

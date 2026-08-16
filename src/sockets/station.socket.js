@@ -55,13 +55,54 @@ function setupStationSockets(io) {
   });
 
   io.on('connection', (socket) => {
-    const user = socket.user;
     let currentRoomSlug = null;
 
-    console.log(`🔌 [Socket Connected] ${user.username} (${user.role}) - ID: ${socket.id}`);
+    console.log(`🔌 [Socket Connected] ${socket.user.username} (${socket.user.role}) - ID: ${socket.id}`);
+
+    // Re-authenticate socket session in real-time
+    socket.on('authenticate', async (data) => {
+      const token = data?.token || socket.handshake.auth?.token;
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, env.JWT_SECRET);
+          const dbUser = await db.findUserById(decoded.id);
+          if (dbUser && !dbUser.isBanned) {
+            socket.user = {
+              id: dbUser.id,
+              username: dbUser.username,
+              avatar: dbUser.avatar,
+              role: dbUser.role,
+              level: dbUser.level,
+              isGuest: false
+            };
+
+            if (currentRoomSlug) {
+              const room = roomManager.getRoom(currentRoomSlug);
+              if (room && room.users[socket.id]) {
+                room.users[socket.id] = {
+                  userId: dbUser.id,
+                  username: dbUser.username,
+                  avatar: dbUser.avatar,
+                  role: dbUser.role,
+                  isGuest: false,
+                  socketId: socket.id
+                };
+                room.broadcastRoomState();
+              }
+            }
+
+            console.log(`🔑 [Socket Authenticated] ${dbUser.username} (${dbUser.role}) - ID: ${socket.id}`);
+            socket.emit('authenticated', { user: socket.user });
+          }
+        } catch (jwtErr) {
+          console.warn('[Socket Authenticate] Token invalid:', jwtErr.message);
+        }
+      }
+    });
 
     // Join Specific Room
     socket.on('join_room', async (data) => {
+      const user = socket.user;
       const targetSlug = data?.slug || 'lofi-chill-study';
       const room = roomManager.getRoom(targetSlug);
 
@@ -139,6 +180,7 @@ function setupStationSockets(io) {
 
     // Add Track to Queue
     socket.on('add_to_queue', async (data) => {
+      const user = socket.user;
       const room = roomManager.getRoom(currentRoomSlug);
       if (!room) {
         socket.emit('queue_error', { message: 'Bạn chưa tham gia phòng nhạc nào!' });
@@ -223,6 +265,7 @@ function setupStationSockets(io) {
 
     // 10s Vote Skip Submission
     socket.on('submit_vote', (data) => {
+      const user = socket.user;
       const room = roomManager.getRoom(currentRoomSlug);
       if (!room || !room.activeVote.active) return;
 
@@ -248,18 +291,19 @@ function setupStationSockets(io) {
       room.checkVoteThreshold();
     });
 
-    // Admin Instant Skip
+    // Admin Instant Skip (Strictly for ADMIN accounts only)
     socket.on('admin_instant_skip', () => {
+      const user = socket.user;
       const room = roomManager.getRoom(currentRoomSlug);
       if (!room) return;
 
-      if (user.role !== 'ADMIN' && user.id !== room.creatorId) {
-        socket.emit('action_error', { message: 'Bạn không có quyền thực hiện hành động này!' });
+      if (user.role !== 'ADMIN') {
+        socket.emit('action_error', { message: 'Chỉ tài khoản Quản trị viên (ADMIN) mới có quyền dùng Admin Skip!' });
         return;
       }
 
       const trackTitle = room.currentTrack ? room.currentTrack.title : 'Bài hát hiện tại';
-      room.broadcastSystemMessage(`⚡ ${user.username} (${user.role === 'ADMIN' ? 'ADMIN' : 'CHỦ PHÒNG'}) đã chuyển tiếp ngay lập tức!`, '⚡');
+      room.broadcastSystemMessage(`⚡ Quản trị viên ${user.username} đã chuyển bài hát tức thì!`, '⚡');
       room.playNextTrack('admin_skip');
     });
 
@@ -278,6 +322,7 @@ function setupStationSockets(io) {
 
     // Send Chat Message
     socket.on('send_chat', (data) => {
+      const user = socket.user;
       const room = roomManager.getRoom(currentRoomSlug);
       if (!room) return;
 
@@ -309,6 +354,7 @@ function setupStationSockets(io) {
 
     // Emoji Reactions
     socket.on('send_reaction', (data) => {
+      const user = socket.user;
       const room = roomManager.getRoom(currentRoomSlug);
       if (!room) return;
 
@@ -338,7 +384,7 @@ function setupStationSockets(io) {
 
     // Disconnect
     socket.on('disconnect', () => {
-      console.log(`🔌 [Socket Disconnected] ${user.username} - ID: ${socket.id}`);
+      console.log(`🔌 [Socket Disconnected] ${socket.user.username} - ID: ${socket.id}`);
       if (currentRoomSlug) {
         const room = roomManager.getRoom(currentRoomSlug);
         if (room) {

@@ -275,6 +275,15 @@ const db = {
     }
 
     const res = await pool.query(sql, values);
+
+    // Clean up all related chat messages and song history for this deleted room
+    try {
+      await pool.query(`DELETE FROM music_station_db.chat_messages WHERE "roomSlug" = $1`, [slug]);
+      await pool.query(`DELETE FROM music_station_db.song_history WHERE "roomSlug" = $1`, [slug]);
+    } catch (e) {
+      console.warn(`[DB deleteRoom cleanup for ${slug}]:`, e.message);
+    }
+
     return res.rowCount > 0;
   },
 
