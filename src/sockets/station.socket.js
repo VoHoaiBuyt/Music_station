@@ -322,6 +322,20 @@ function setupStationSockets(io) {
       });
     });
 
+    // Leave Room
+    socket.on('leave_room', () => {
+      if (currentRoomSlug) {
+        const room = roomManager.getRoom(currentRoomSlug);
+        if (room) {
+          delete room.users[socket.id];
+          socket.leave('room_' + currentRoomSlug);
+          room.broadcastRoomState();
+          roomManager.broadcastLobbyUpdate();
+        }
+        currentRoomSlug = null;
+      }
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
       console.log(`🔌 [Socket Disconnected] ${user.username} - ID: ${socket.id}`);

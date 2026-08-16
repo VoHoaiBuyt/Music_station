@@ -936,6 +936,17 @@ body {
   color: white;
 }
 
+.btn-leave-room {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: var(--accent-rose);
+}
+
+.btn-leave-room:hover {
+  background: var(--accent-rose);
+  color: white;
+}
+
 .btn-transfer-room {
   background: rgba(245, 158, 11, 0.15);
   border-color: rgba(245, 158, 11, 0.4);

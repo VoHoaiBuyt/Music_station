@@ -73,6 +73,7 @@ const DOM = {
   roomActiveHost: document.getElementById('roomActiveHost'),
   listenerCount: document.getElementById('listenerCount'),
   btnShareRoom: document.getElementById('btnShareRoom'),
+  btnLeaveRoom: document.getElementById('btnLeaveRoom'),
   btnTransferOwnership: document.getElementById('btnTransferOwnership'),
   btnAdminInstantSkip: document.getElementById('btnAdminInstantSkip'),
   btnDeleteRoom: document.getElementById('btnDeleteRoom'),
@@ -620,6 +621,24 @@ function switchView(viewName, slug = null, password = null) {
   appState.currentView = viewName;
 
   if (viewName === 'lobby') {
+    // Notify server to leave the active room namespace
+    if (socket && appState.activeRoomSlug) {
+      socket.emit('leave_room');
+    }
+
+    // Stop music playback when returning to lobby
+    if (ytPlayer && ytReady) {
+      try {
+        ytPlayer.stopVideo();
+      } catch (e) {}
+    }
+
+    appState.activeRoomSlug = null;
+    appState.activeRoomData = null;
+    DOM.chatMessages.innerHTML = '';
+    DOM.queueList.innerHTML = '';
+    hideVoteBanner();
+
     DOM.lobbyView.style.display = 'flex';
     DOM.roomView.style.display = 'none';
     if (DOM.navBtnLobby) DOM.navBtnLobby.classList.add('active');
@@ -1226,6 +1245,14 @@ function setupEventListeners() {
       prompt('Sao chép liên kết phòng:', shareUrl);
     }
   });
+
+  // Leave Room Button (For listeners/non-hosts)
+  if (DOM.btnLeaveRoom) {
+    DOM.btnLeaveRoom.addEventListener('click', () => {
+      showToast('👋 Đã rời khỏi phòng nhạc!', 'info');
+      switchView('lobby');
+    });
+  }
 
   // Transfer Ownership Button
   if (DOM.btnTransferOwnership) {
@@ -1907,6 +1934,10 @@ function updateRoomControlsVisibility(roomData) {
 
   if (DOM.btnDeleteRoom) {
     DOM.btnDeleteRoom.style.display = ((isOwner || isAdmin) && !roomData.isDefault) ? 'flex' : 'none';
+  }
+
+  if (DOM.btnLeaveRoom) {
+    DOM.btnLeaveRoom.style.display = isOwner ? 'none' : 'flex';
   }
 }
 
