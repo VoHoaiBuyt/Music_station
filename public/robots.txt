@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://musicstation.up.railway.app/sitemap.xml
+Sitemap: https://music-station.hoaibuyt05.workers.dev/sitemap.xml
