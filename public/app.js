@@ -58,8 +58,12 @@ const DOM = {
   btnLogoHome: document.getElementById('btnLogoHome'),
   btnBackToLobby: document.getElementById('btnBackToLobby'),
 
+  // Header Elements
+  headerSearchInput: document.getElementById('headerSearchInput'),
+  btnClearHeaderSearch: document.getElementById('btnClearHeaderSearch'),
+
   // Lobby Elements
-  lobbySearchInput: document.getElementById('lobbySearchInput'),
+  lobbySearchInput: document.getElementById('headerSearchInput'),
   roomsGrid: document.getElementById('roomsGrid'),
   lobbyTotalRoomsBadge: document.getElementById('lobbyTotalRoomsBadge'),
   btnRefreshLobby: document.getElementById('btnRefreshLobby'),
@@ -120,16 +124,16 @@ const DOM = {
   queueList: document.getElementById('queueList'),
   btnOpenAddFromQueue: document.getElementById('btnOpenAddFromQueue'),
 
-  // Add Song Form
+  // Add Song Form & YouTube Search
   cooldownCard: document.getElementById('cooldownCard'),
   cooldownIcon: document.getElementById('cooldownIcon'),
   cooldownTitle: document.getElementById('cooldownTitle'),
   cooldownSubtitle: document.getElementById('cooldownSubtitle'),
   cooldownTimerDisplay: document.getElementById('cooldownTimerDisplay'),
-  addSongForm: document.getElementById('addSongForm'),
-  songUrlInput: document.getElementById('songUrlInput'),
-  btnSubmitAdd: document.getElementById('btnSubmitAdd'),
-  btnSubmitAddText: document.getElementById('btnSubmitAddText'),
+  songSearchInput: document.getElementById('songSearchInput'),
+  btnClearSongSearch: document.getElementById('btnClearSongSearch'),
+  ytSearchResults: document.getElementById('ytSearchResults'),
+  ytSearchLoading: document.getElementById('ytSearchLoading'),
 
   // Favorites Tab
   favTotalCount: document.getElementById('favTotalCount'),
@@ -155,6 +159,19 @@ const DOM = {
   newRoomDesc: document.getElementById('newRoomDesc'),
   newRoomCoverUrl: document.getElementById('newRoomCoverUrl'),
   coverPresets: document.querySelectorAll('.cover-preset'),
+  labelPublicRoom: document.getElementById('labelPublicRoom'),
+  labelPrivateRoom: document.getElementById('labelPrivateRoom'),
+  createRoomPasswordWrap: document.getElementById('createRoomPasswordWrap'),
+  newRoomPassword: document.getElementById('newRoomPassword'),
+
+  // Modals: Join Private Room
+  joinPrivateRoomModal: document.getElementById('joinPrivateRoomModal'),
+  joinPrivateRoomForm: document.getElementById('joinPrivateRoomForm'),
+  joinPrivateTargetSlug: document.getElementById('joinPrivateTargetSlug'),
+  joinPrivatePasswordInput: document.getElementById('joinPrivatePasswordInput'),
+  joinPrivateAlert: document.getElementById('joinPrivateAlert'),
+  joinPrivateRoomSub: document.getElementById('joinPrivateRoomSub'),
+  btnCloseJoinPrivateModal: document.getElementById('btnCloseJoinPrivateModal'),
 
   // Modals: Auth
   btnOpenAuthModal: document.getElementById('btnOpenAuthModal'),
@@ -469,13 +486,14 @@ function renderLobbyRooms() {
   const container = DOM.roomsGrid;
   container.innerHTML = '';
 
-  let filtered = appState.allRooms;
+  let filtered = appState.allRooms || [];
 
-  // Filter by search query
+  // Filter by search query (room name, slug, or host name)
   if (appState.searchQuery.trim()) {
     const q = appState.searchQuery.toLowerCase().trim();
     filtered = filtered.filter(r => 
       r.name.toLowerCase().includes(q) || 
+      r.slug.toLowerCase().includes(q) ||
       (r.creatorName && r.creatorName.toLowerCase().includes(q))
     );
   }
@@ -483,15 +501,15 @@ function renderLobbyRooms() {
   DOM.lobbyTotalRoomsBadge.textContent = `${filtered.length} phòng`;
 
   if (filtered.length === 0) {
-    if (appState.allRooms.length === 0) {
+    if (!appState.allRooms || appState.allRooms.length === 0) {
       container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
-          <div style="width: 70px; height: 70px; margin: 0 auto 16px; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--accent-primary);">
+        <div class="lobby-empty-state">
+          <div class="lobby-empty-icon">
             <i class="ph-fill ph-broadcast"></i>
           </div>
-          <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Chưa có phòng nhạc nào</h3>
-          <p style="font-size: 14px; max-width: 450px; margin: 0 auto 20px; line-height: 1.5;">Hãy là người đầu tiên tạo không gian âm nhạc của riêng bạn và mời bạn bè cùng vào nghe!</p>
-          <button class="btn-create-room-trigger" id="btnCreateFirstRoom" style="margin: 0 auto;">
+          <h3>Chưa có phòng nhạc nào</h3>
+          <p>Hiện chưa có phòng nhạc nào được tạo. Hãy là người đầu tiên tạo phòng để phát nhạc và mời bạn bè cùng lắng nghe!</p>
+          <button class="btn-empty-create" id="btnCreateFirstRoom">
             <i class="ph-bold ph-plus-circle"></i>
             <span>+ Tạo Phòng Nhạc Đầu Tiên</span>
           </button>
@@ -510,10 +528,12 @@ function renderLobbyRooms() {
       }
     } else {
       container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--text-muted);">
-          <i class="ph ph-magnifying-glass" style="font-size: 40px; margin-bottom: 10px; display: block;"></i>
-          <p style="font-size: 16px; font-weight: 600; color: var(--text-primary);">Không tìm thấy phòng nhạc nào phù hợp</p>
-          <span style="font-size: 13px;">Hãy thử tìm từ khoá khác hoặc tự tạo phòng nhạc mới của riêng bạn!</span>
+        <div class="lobby-empty-state">
+          <div class="lobby-empty-icon" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">
+            <i class="ph ph-magnifying-glass"></i>
+          </div>
+          <h3>Không tìm thấy phòng phù hợp</h3>
+          <p>Không có phòng nào khớp với từ khoá "<strong>${escapeHtml(appState.searchQuery)}</strong>". Hãy thử tìm kiếm tên khác hoặc tạo phòng mới!</p>
         </div>
       `;
     }
@@ -525,8 +545,12 @@ function renderLobbyRooms() {
     card.className = 'room-card';
 
     const npTrack = room.currentTrack;
-    const npTitle = npTrack ? npTrack.title : 'Đang chuẩn bị danh sách phát...';
+    const npTitle = npTrack ? npTrack.title : 'Đang chờ bài hát từ người nghe...';
     const npThumb = (npTrack && npTrack.thumbnail) ? npTrack.thumbnail : room.coverUrl;
+
+    const privacyBadge = room.isPrivate 
+      ? `<span class="room-badge-pill room-badge-private"><i class="ph-fill ph-lock-key"></i> Riêng tư</span>`
+      : `<span class="room-badge-pill room-badge-public"><i class="ph-fill ph-globe"></i> Công khai</span>`;
 
     card.innerHTML = `
       <div class="room-card-cover">
@@ -534,6 +558,7 @@ function renderLobbyRooms() {
         <div class="room-card-cover-overlay"></div>
         <div class="room-card-badges">
           <span class="room-live-badge"><span class="live-pulse"></span> LIVE</span>
+          ${privacyBadge}
         </div>
         <div class="room-card-listeners">
           <i class="ph-fill ph-users"></i>
@@ -560,37 +585,54 @@ function renderLobbyRooms() {
     `;
 
     card.querySelector('.btn-enter-room').addEventListener('click', () => {
-      switchView('room', room.slug);
+      // Check if private password required
+      if (room.isPrivate && room.hasPassword && (!appState.currentUser || (appState.currentUser.id !== room.creatorId && appState.currentUser.role !== 'ADMIN'))) {
+        openJoinPrivateRoomModal(room.slug, room.name);
+      } else {
+        switchView('room', room.slug);
+      }
     });
 
     container.appendChild(card);
   });
 }
 
+function openJoinPrivateRoomModal(slug, name) {
+  DOM.joinPrivateTargetSlug.value = slug;
+  DOM.joinPrivateRoomSub.textContent = `Phòng "${name || slug}" yêu cầu mật khẩu để tham gia`;
+  DOM.joinPrivatePasswordInput.value = '';
+  DOM.joinPrivateAlert.style.display = 'none';
+  DOM.joinPrivateRoomModal.style.display = 'flex';
+  DOM.joinPrivatePasswordInput.focus();
+}
+
 // ==========================================
 // 6. View Routing & Navigation
 // ==========================================
-function switchView(viewName, slug = null) {
+function switchView(viewName, slug = null, password = null) {
   appState.currentView = viewName;
 
   if (viewName === 'lobby') {
     DOM.lobbyView.style.display = 'flex';
     DOM.roomView.style.display = 'none';
-    DOM.navBtnLobby.classList.add('active');
-    DOM.navBtnLeaderboard.classList.remove('active');
-    window.location.hash = '';
-
+    if (DOM.navBtnLobby) DOM.navBtnLobby.classList.add('active');
+    if (DOM.navBtnLeaderboard) DOM.navBtnLeaderboard.classList.remove('active');
+    
+    // Update URL to clean state
+    history.replaceState(null, '', window.location.pathname);
     loadLobbyRooms();
   } else if (viewName === 'room' && slug) {
     DOM.lobbyView.style.display = 'none';
     DOM.roomView.style.display = 'grid';
-    DOM.navBtnLobby.classList.remove('active');
+    if (DOM.navBtnLobby) DOM.navBtnLobby.classList.remove('active');
     appState.activeRoomSlug = slug;
-    window.location.hash = `room-${slug}`;
+    
+    // Update URL query parameter to ?room=slug
+    history.replaceState(null, '', `?room=${encodeURIComponent(slug)}`);
 
     // Join Socket Room
     if (socket) {
-      socket.emit('join_room', { slug });
+      socket.emit('join_room', { slug, password });
     }
   }
 }
@@ -698,7 +740,11 @@ function initSocket() {
 
   socket.on('queue_success', (data) => {
     showToast(`✅ Đã thêm bài "${data.track.title}" vào hàng chờ!`, 'success');
-    DOM.songUrlInput.value = '';
+    if (DOM.songSearchInput) {
+      DOM.songSearchInput.value = '';
+      if (DOM.btnClearSongSearch) DOM.btnClearSongSearch.style.display = 'none';
+      if (DOM.ytSearchResults) DOM.ytSearchResults.innerHTML = '';
+    }
     updateCooldownUI(data.cooldown);
     switchTab('queue');
   });
@@ -706,6 +752,16 @@ function initSocket() {
   socket.on('queue_error', (data) => {
     showToast(`⚠️ ${data.message}`, 'error');
     if (data.cooldown) updateCooldownUI(data.cooldown);
+  });
+
+  // Private room password required
+  socket.on('room_password_required', (data) => {
+    openJoinPrivateRoomModal(data.slug, data.name);
+  });
+
+  socket.on('room_error', (data) => {
+    showToast(`⚠️ ${data.message}`, 'error');
+    switchView('lobby');
   });
 
   // Vote Events
@@ -1113,34 +1169,38 @@ async function removeFavorite(videoId) {
 // ==========================================
 function setupEventListeners() {
   // Navigation Bar Switcher
-  DOM.navBtnLobby.addEventListener('click', () => switchView('lobby'));
-  DOM.btnLogoHome.addEventListener('click', () => switchView('lobby'));
-  DOM.btnBackToLobby.addEventListener('click', () => switchView('lobby'));
+  if (DOM.navBtnLobby) DOM.navBtnLobby.addEventListener('click', () => switchView('lobby'));
+  if (DOM.btnLogoHome) DOM.btnLogoHome.addEventListener('click', () => switchView('lobby'));
+  if (DOM.btnBackToLobby) DOM.btnBackToLobby.addEventListener('click', () => switchView('lobby'));
 
-  DOM.navBtnLeaderboard.addEventListener('click', async () => {
-    DOM.profileModal.style.display = 'flex';
-    loadLeaderboard();
-  });
+  if (DOM.navBtnLeaderboard) {
+    DOM.navBtnLeaderboard.addEventListener('click', async () => {
+      DOM.profileModal.style.display = 'flex';
+      loadLeaderboard();
+    });
+  }
 
-  // Lobby Search Input
-  DOM.lobbySearchInput.addEventListener('input', (e) => {
-    appState.searchQuery = e.target.value;
-    renderLobbyRooms();
-  });
+  // Header Global Search Input
+  initHeaderSearch();
+
+  // YouTube Song Search in Add tab
+  initSongSearch();
 
   DOM.btnRefreshLobby.addEventListener('click', () => {
     loadLobbyRooms();
     showToast('🔄 Đã làm mới danh sách phòng nhạc!', 'success');
   });
 
-  // Share Room Link
-  DOM.btnShareRoom.addEventListener('click', () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      showToast('🔗 Đã sao chép link phòng vào bộ nhớ tạm!', 'success');
-    }).catch(() => {
-      showToast(url, 'info');
-    });
+  // Share Room Link (?room=slug)
+  DOM.btnShareRoom.addEventListener('click', async () => {
+    if (!appState.activeRoomSlug) return;
+    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(appState.activeRoomSlug)}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('🔗 Đã sao chép liên kết phòng vào bộ nhớ tạm!', 'success');
+    } catch (e) {
+      prompt('Sao chép liên kết phòng:', shareUrl);
+    }
   });
 
   // Delete Room (Owner / Admin)
@@ -1269,15 +1329,6 @@ function setupEventListeners() {
   DOM.btnOpenAddModal.addEventListener('click', () => switchTab('add'));
   DOM.btnOpenAddFromQueue.addEventListener('click', () => switchTab('add'));
 
-  // Add Song Form Submit
-  DOM.addSongForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const urlOrId = DOM.songUrlInput.value.trim();
-    if (!urlOrId || !socket) return;
-
-    socket.emit('add_to_queue', { urlOrId });
-  });
-
   // Chat Submission
   DOM.chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1328,6 +1379,25 @@ function setupEventListeners() {
     DOM.createRoomModal.style.display = 'none';
   });
 
+  // Privacy Toggle in Create Room
+  if (DOM.labelPublicRoom && DOM.labelPrivateRoom) {
+    const radios = document.querySelectorAll('input[name="createRoomPrivacy"]');
+    radios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (radio.value === 'private') {
+          DOM.labelPrivateRoom.classList.add('active');
+          DOM.labelPublicRoom.classList.remove('active');
+          if (DOM.createRoomPasswordWrap) DOM.createRoomPasswordWrap.style.display = 'flex';
+          if (DOM.newRoomPassword) DOM.newRoomPassword.focus();
+        } else {
+          DOM.labelPublicRoom.classList.add('active');
+          DOM.labelPrivateRoom.classList.remove('active');
+          if (DOM.createRoomPasswordWrap) DOM.createRoomPasswordWrap.style.display = 'none';
+        }
+      });
+    });
+  }
+
   // Cover Presets Click
   DOM.coverPresets.forEach(preset => {
     preset.addEventListener('click', () => {
@@ -1345,13 +1415,23 @@ function setupEventListeners() {
     const description = DOM.newRoomDesc ? DOM.newRoomDesc.value.trim() : '';
     const customCover = DOM.newRoomCoverUrl ? DOM.newRoomCoverUrl.value.trim() : '';
     const coverUrl = customCover || selectedCoverUrl;
+    const privacyVal = document.querySelector('input[name="createRoomPrivacy"]:checked')?.value || 'public';
+    const isPrivate = privacyVal === 'private';
+    const password = isPrivate ? (DOM.newRoomPassword ? DOM.newRoomPassword.value.trim() : null) : null;
 
     if (!name) return;
+
+    if (isPrivate && (!password || password.length < 4)) {
+      DOM.createRoomAlert.textContent = 'Vui lòng đặt mật khẩu ít nhất 4 ký tự cho phòng riêng tư!';
+      DOM.createRoomAlert.className = 'modal-alert error';
+      DOM.createRoomAlert.style.display = 'block';
+      return;
+    }
 
     try {
       const res = await apiRequest('/api/rooms', {
         method: 'POST',
-        body: JSON.stringify({ name, description, coverUrl })
+        body: JSON.stringify({ name, description, coverUrl, isPrivate, password })
       });
 
       if (res.success && res.data) {
@@ -1368,17 +1448,66 @@ function setupEventListeners() {
   });
 
   // ==========================================
+  // Modal: Join Private Room Handlers
+  // ==========================================
+  if (DOM.joinPrivateRoomForm) {
+    DOM.joinPrivateRoomForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const slug = DOM.joinPrivateTargetSlug.value;
+      const password = DOM.joinPrivatePasswordInput.value.trim();
+      if (!slug || !password) return;
+
+      try {
+        const res = await fetch(`/api/rooms/${slug}/verify-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          DOM.joinPrivateAlert.textContent = data.message || 'Mật khẩu phòng không chính xác!';
+          DOM.joinPrivateAlert.className = 'modal-alert error';
+          DOM.joinPrivateAlert.style.display = 'block';
+          return;
+        }
+
+        DOM.joinPrivateRoomModal.style.display = 'none';
+        switchView('room', slug, password);
+      } catch (err) {
+        DOM.joinPrivateAlert.textContent = 'Lỗi kết nối máy chủ!';
+        DOM.joinPrivateAlert.className = 'modal-alert error';
+        DOM.joinPrivateAlert.style.display = 'block';
+      }
+    });
+  }
+
+  if (DOM.btnCloseJoinPrivateModal) {
+    DOM.btnCloseJoinPrivateModal.addEventListener('click', () => {
+      DOM.joinPrivateRoomModal.style.display = 'none';
+    });
+  }
+
+  // ==========================================
   // Modal: Auth Handlers
   // ==========================================
-  DOM.btnOpenAuthModal.addEventListener('click', () => {
+  function openAuthModal(defaultTab = 'login') {
     DOM.authAlert.style.display = 'none';
+    if (defaultTab === 'login') {
+      DOM.authTabLogin.classList.add('active');
+      DOM.authTabRegister.classList.remove('active');
+      DOM.loginForm.style.display = 'flex';
+      DOM.registerForm.style.display = 'none';
+    } else {
+      DOM.authTabRegister.classList.add('active');
+      DOM.authTabLogin.classList.remove('active');
+      DOM.registerForm.style.display = 'flex';
+      DOM.loginForm.style.display = 'none';
+    }
     DOM.authModal.style.display = 'flex';
-  });
+  }
 
-  DOM.btnLoginFromFav.addEventListener('click', () => {
-    DOM.authAlert.style.display = 'none';
-    DOM.authModal.style.display = 'flex';
-  });
+  DOM.btnOpenAuthModal.addEventListener('click', () => openAuthModal('login'));
+  DOM.btnLoginFromFav.addEventListener('click', () => openAuthModal('login'));
 
   DOM.closeAuthModal.addEventListener('click', () => {
     DOM.authModal.style.display = 'none';
@@ -1700,12 +1829,207 @@ function openProfileModal() {
   DOM.profileModal.style.display = 'flex';
 }
 
+// ==========================================
+// 10.1 Search Helpers (Header & YouTube)
+// ==========================================
+function initHeaderSearch() {
+  if (!DOM.headerSearchInput) return;
+
+  DOM.headerSearchInput.addEventListener('input', (e) => {
+    const rawVal = e.target.value;
+    const trimmed = rawVal.trim();
+    if (DOM.btnClearHeaderSearch) {
+      DOM.btnClearHeaderSearch.style.display = trimmed ? 'flex' : 'none';
+    }
+
+    // Check if user pasted a room link (e.g. ?room=my-room or http://.../?room=my-room)
+    const roomParamMatch = trimmed.match(/[?&]room=([a-zA-Z0-9_-]+)/);
+    if (roomParamMatch) {
+      const targetSlug = roomParamMatch[1];
+      appState.searchQuery = '';
+      DOM.headerSearchInput.value = '';
+      if (DOM.btnClearHeaderSearch) DOM.btnClearHeaderSearch.style.display = 'none';
+
+      const foundRoom = (appState.allRooms || []).find(r => r.slug === targetSlug);
+      if (foundRoom && foundRoom.isPrivate && foundRoom.hasPassword && (!appState.currentUser || (appState.currentUser.id !== foundRoom.creatorId && appState.currentUser.role !== 'ADMIN'))) {
+        openJoinPrivateRoomModal(foundRoom.slug, foundRoom.name);
+      } else {
+        switchView('room', targetSlug);
+      }
+      return;
+    }
+
+    appState.searchQuery = trimmed;
+    if (appState.currentView !== 'lobby') {
+      switchView('lobby');
+    } else {
+      renderLobbyRooms();
+    }
+  });
+
+  DOM.headerSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const rawVal = DOM.headerSearchInput.value.trim();
+      if (!rawVal) return;
+
+      const roomParamMatch = rawVal.match(/[?&]room=([a-zA-Z0-9_-]+)/);
+      const slugToFind = roomParamMatch ? roomParamMatch[1] : rawVal;
+
+      const exactRoom = (appState.allRooms || []).find(r => r.slug.toLowerCase() === slugToFind.toLowerCase());
+      if (exactRoom) {
+        if (exactRoom.isPrivate && exactRoom.hasPassword && (!appState.currentUser || (appState.currentUser.id !== exactRoom.creatorId && appState.currentUser.role !== 'ADMIN'))) {
+          openJoinPrivateRoomModal(exactRoom.slug, exactRoom.name);
+        } else {
+          switchView('room', exactRoom.slug);
+        }
+      }
+    }
+  });
+
+  if (DOM.btnClearHeaderSearch) {
+    DOM.btnClearHeaderSearch.addEventListener('click', () => {
+      DOM.headerSearchInput.value = '';
+      DOM.btnClearHeaderSearch.style.display = 'none';
+      appState.searchQuery = '';
+      renderLobbyRooms();
+      DOM.headerSearchInput.focus();
+    });
+  }
+}
+
+let songSearchTimer = null;
+
+function initSongSearch() {
+  if (!DOM.songSearchInput) return;
+
+  DOM.songSearchInput.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    if (DOM.btnClearSongSearch) {
+      DOM.btnClearSongSearch.style.display = q ? 'flex' : 'none';
+    }
+
+    if (songSearchTimer) clearTimeout(songSearchTimer);
+
+    if (!q) {
+      if (DOM.ytSearchResults) DOM.ytSearchResults.innerHTML = '';
+      if (DOM.ytSearchLoading) DOM.ytSearchLoading.style.display = 'none';
+      return;
+    }
+
+    songSearchTimer = setTimeout(() => {
+      performYouTubeSearch(q);
+    }, 350);
+  });
+
+  DOM.songSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const q = DOM.songSearchInput.value.trim();
+      if (q) {
+        if (songSearchTimer) clearTimeout(songSearchTimer);
+        performYouTubeSearch(q);
+      }
+    }
+  });
+
+  if (DOM.btnClearSongSearch) {
+    DOM.btnClearSongSearch.addEventListener('click', () => {
+      DOM.songSearchInput.value = '';
+      DOM.btnClearSongSearch.style.display = 'none';
+      if (DOM.ytSearchResults) DOM.ytSearchResults.innerHTML = '';
+      if (DOM.ytSearchLoading) DOM.ytSearchLoading.style.display = 'none';
+      DOM.songSearchInput.focus();
+    });
+  }
+}
+
+async function performYouTubeSearch(query) {
+  if (!DOM.ytSearchResults) return;
+  if (DOM.ytSearchLoading) DOM.ytSearchLoading.style.display = 'flex';
+  DOM.ytSearchResults.innerHTML = '';
+
+  try {
+    const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (DOM.ytSearchLoading) DOM.ytSearchLoading.style.display = 'none';
+
+    if (!data.success || !data.data || data.data.length === 0) {
+      DOM.ytSearchResults.innerHTML = `
+        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); font-size: 13px;">
+          Không tìm thấy bài hát nào trên YouTube với từ khoá này.
+        </div>
+      `;
+      return;
+    }
+
+    renderYouTubeSearchResults(data.data);
+  } catch (err) {
+    if (DOM.ytSearchLoading) DOM.ytSearchLoading.style.display = 'none';
+    DOM.ytSearchResults.innerHTML = `
+      <div style="text-align: center; padding: 24px 16px; color: var(--accent-rose); font-size: 13px;">
+        ⚠️ Không thể tìm kiếm video. Vui lòng kiểm tra lại kết nối mạng!
+      </div>
+    `;
+  }
+}
+
+function renderYouTubeSearchResults(videos) {
+  if (!DOM.ytSearchResults) return;
+  DOM.ytSearchResults.innerHTML = '';
+
+  videos.forEach(v => {
+    const item = document.createElement('div');
+    item.className = 'yt-result-card';
+    item.innerHTML = `
+      <div class="yt-thumb-wrap">
+        <img src="${escapeHtml(v.thumbnail)}" alt="${escapeHtml(v.title)}" loading="lazy">
+        <span class="yt-duration-badge">${escapeHtml(v.durationFormatted || '4:00')}</span>
+      </div>
+      <div class="yt-meta-stack">
+        <strong class="yt-song-title" title="${escapeHtml(v.title)}">${escapeHtml(v.title)}</strong>
+        <span class="yt-artist-name">${escapeHtml(v.author || 'YouTube Artist')}</span>
+      </div>
+      <button class="btn-add-yt-track" title="Thêm bài hát vào hàng chờ">
+        <i class="ph-bold ph-plus"></i>
+        <span>Thêm</span>
+      </button>
+    `;
+
+    item.querySelector('.btn-add-yt-track').addEventListener('click', () => {
+      if (!socket) {
+        showToast('⚠️ Chưa kết nối phòng nhạc!', 'error');
+        return;
+      }
+      socket.emit('add_to_queue', {
+        urlOrId: v.videoId,
+        duration: v.duration
+      });
+    });
+
+    DOM.ytSearchResults.appendChild(item);
+  });
+}
+
 async function loadLeaderboard() {
   try {
     const res = await apiRequest('/api/user/leaderboard');
     if (res.success && Array.isArray(res.data)) {
       DOM.modalLeaderboardList.innerHTML = '';
-      res.data.forEach((l, idx) => {
+      
+      // Filter out ADMIN accounts from the leaderboard
+      const filtered = res.data.filter(u => u.role !== 'ADMIN');
+
+      if (filtered.length === 0) {
+        DOM.modalLeaderboardList.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">
+            Chưa có bài hát nào được yêu cầu bởi thành viên. Hãy là người đầu tiên!
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach((l, idx) => {
         const item = document.createElement('div');
         item.className = 'leader-item';
         item.innerHTML = `
@@ -1776,15 +2100,20 @@ function escapeHtml(str) {
 // 12. App Initialization
 // ==========================================
 async function initApp() {
-  console.log('🎧 Initializing Lofi Lounge Hub Client (v2.0.0)...');
+  console.log('🎧 Initializing Music Room Hub Client...');
 
   setupEventListeners();
   checkAuthSession();
   initSocket();
 
-  // Route handling based on URL hash (e.g. #room-lofi-chill-study)
+  // Route handling based on URL query (?room=slug) or hash (#room-slug)
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomParam = urlParams.get('room');
   const hash = window.location.hash;
-  if (hash && hash.startsWith('#room-')) {
+
+  if (roomParam) {
+    switchView('room', roomParam);
+  } else if (hash && hash.startsWith('#room-')) {
     const slug = hash.replace('#room-', '');
     switchView('room', slug);
   } else {

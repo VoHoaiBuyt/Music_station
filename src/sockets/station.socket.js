@@ -61,13 +61,27 @@ function setupStationSockets(io) {
     console.log(`🔌 [Socket Connected] ${user.username} (${user.role}) - ID: ${socket.id}`);
 
     // Join Specific Room
-    socket.on('join_room', (data) => {
+    socket.on('join_room', async (data) => {
       const targetSlug = data?.slug || 'lofi-chill-study';
       const room = roomManager.getRoom(targetSlug);
 
       if (!room) {
         socket.emit('room_error', { message: `Phòng "${targetSlug}" không tồn tại!` });
         return;
+      }
+
+      // Check password if private and has password (bypass for creator or ADMIN)
+      if (room.isPrivate && room.passwordHash && user.role !== 'ADMIN' && user.id !== room.creatorId) {
+        const providedPassword = data?.password;
+        const isMatch = await room.verifyPassword(providedPassword);
+        if (!isMatch) {
+          socket.emit('room_password_required', {
+            slug: targetSlug,
+            name: room.name,
+            message: 'Phòng này yêu cầu mật khẩu để tham gia!'
+          });
+          return;
+        }
       }
 
       // Leave previous room if any

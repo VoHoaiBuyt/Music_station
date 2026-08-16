@@ -6,6 +6,7 @@ const { authenticateToken } = require('../middleware/auth.middleware');
 // Public routes
 router.get('/', roomController.getAllRooms);
 router.get('/:slug', roomController.getRoomBySlug);
+router.post('/:slug/verify-password', roomController.verifyPassword);
 
 // Protected routes (Require Login)
 router.post('/', authenticateToken, roomController.createRoom);

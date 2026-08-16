@@ -168,9 +168,10 @@ const db = {
   async getAllRooms() {
     try {
       const res = await pool.query(
-        `SELECT id, slug, name, description, genre, "coverUrl", "isPrivate", "creatorId", "creatorName", "currentTrack", queue, "isDefault", "createdAt"
+        `SELECT id, slug, name, description, genre, "coverUrl", "isPrivate", "passwordHash", "creatorId", "creatorName", "currentTrack", queue, "isDefault", "createdAt"
          FROM music_station_db.rooms
-         ORDER BY "isDefault" DESC, "createdAt" ASC`
+         WHERE "isDefault" = false
+         ORDER BY "createdAt" DESC`
       );
       return res.rows;
     } catch (err) {
@@ -416,6 +417,7 @@ const db = {
       const res = await pool.query(
         `SELECT id, username, avatar, role, level, xp, "totalRequests"
          FROM music_station_db.users
+         WHERE role != 'ADMIN' AND "isBanned" = false
          ORDER BY "totalRequests" DESC, xp DESC
          LIMIT $1`,
         [limit]

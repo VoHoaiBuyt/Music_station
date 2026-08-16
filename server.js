@@ -46,10 +46,12 @@ app.get('/api/health', (req, res) => {
 
 // REST API Routes
 const adminRoutes = require('./src/routes/admin.routes');
+const youtubeRoutes = require('./src/routes/youtube.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/youtube', youtubeRoutes);
 
 // SPA Fallback to index.html for unknown GET requests
 app.get('*', (req, res, next) => {

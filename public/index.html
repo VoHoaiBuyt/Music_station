@@ -34,22 +34,21 @@
           <div class="live-pulse"></div>
           <i class="ph-bold ph-broadcast logo-icon"></i>
           <div class="logo-text">
-            <span class="station-name">LOFI LOUNGE</span>
+            <span class="station-name">Music Room</span>
             <span class="station-sub">HUB • MULTI-ROOM</span>
           </div>
         </div>
+      </div>
 
-        <!-- Navigation Switcher -->
-        <nav class="header-nav">
-          <button class="nav-btn active" id="navBtnLobby" title="Sảnh Khám Phá Phòng">
-            <i class="ph-fill ph-squares-four"></i>
-            <span>Sảnh Phòng</span>
+      <!-- Header Center: Global Search Bar -->
+      <div class="header-center">
+        <div class="header-search-bar">
+          <i class="ph ph-magnifying-glass"></i>
+          <input type="text" id="headerSearchInput" placeholder="Tìm kiếm phòng, chủ phòng hoặc dán link..." autocomplete="off">
+          <button type="button" class="btn-clear-header-search" id="btnClearHeaderSearch" style="display: none;" title="Xoá tìm kiếm">
+            <i class="ph-bold ph-x"></i>
           </button>
-          <button class="nav-btn" id="navBtnLeaderboard" title="Bảng Xếp Hạng">
-            <i class="ph-fill ph-trophy"></i>
-            <span>Xếp Hạng</span>
-          </button>
-        </nav>
+        </div>
       </div>
 
       <div class="header-right">
@@ -92,25 +91,6 @@
     <!-- VIEW 1: LOBBY EXPLORER (Sảnh Danh Sách Các Phòng Nhạc) -->
     <!-- ==================================================== -->
     <section class="lobby-view" id="lobbyView">
-      <!-- Lobby Hero Section -->
-      <div class="lobby-hero">
-        <div class="hero-content">
-          <div class="hero-tag">
-            <i class="ph-fill ph-sparkle"></i>
-            <span>SẢNH NGHE NHẠC ĐA PHÒNG LIÊN TỤC</span>
-          </div>
-          <h1 class="hero-title">Sảnh Các Phòng Nhạc Trực Tuyến</h1>
-          <p class="hero-desc">Mỗi phòng nhạc chạy độc lập và lưu trữ bền vững trên Supabase. Bạn có thể tự do tạo phòng nhạc riêng, phát bất kỳ bài hát nào từ YouTube mà không bị mất dữ liệu khi thoát ra!</p>
-        </div>
-
-        <div class="hero-actions">
-          <div class="lobby-search-bar">
-            <i class="ph ph-magnifying-glass"></i>
-            <input type="text" id="lobbySearchInput" placeholder="Tìm kiếm tên phòng hoặc chủ phòng..." autocomplete="off">
-          </div>
-        </div>
-      </div>
-
       <!-- Rooms Grid Section -->
       <div class="rooms-grid-section">
         <div class="rooms-grid-header">
@@ -141,12 +121,12 @@
         <div class="room-top-left">
           <button class="btn-back-to-lobby" id="btnBackToLobby" title="Quay lại Sảnh khám phá">
             <i class="ph-bold ph-arrow-left"></i>
-            <span>⬅️ Quay Lại Sảnh</span>
+            <span>Quay Lại Sảnh</span>
           </button>
 
           <div class="room-header-meta">
             <div class="room-header-title-row">
-              <h1 class="room-header-title" id="roomActiveTitle">Lofi Study & Relax Beats</h1>
+              <h1 class="room-header-title" id="roomActiveTitle">Music Room</h1>
             </div>
             <div class="room-header-sub">
               <span>Chủ phòng: <strong id="roomActiveHost">Station Master</strong></span>
@@ -358,7 +338,7 @@
           </div>
         </div>
 
-        <!-- TAB CONTENT 2: Add Song (Search / URL Input) -->
+        <!-- TAB CONTENT 2: Add Song (Search & Suggestions / URL Input) -->
         <div class="tab-pane" id="tabPaneAdd">
           <!-- Cooldown Status Card -->
           <div class="cooldown-card" id="cooldownCard">
@@ -372,21 +352,35 @@
             <div class="cooldown-timer-display" id="cooldownTimerDisplay" style="display: none;">05:00</div>
           </div>
 
-          <!-- Add Song Form -->
-          <form class="add-song-form" id="addSongForm">
-            <div class="input-group">
-              <label for="songUrlInput">Link YouTube hoặc Mã Video (11 ký tự):</label>
-              <div class="input-with-icon">
-                <i class="ph ph-link"></i>
-                <input type="text" id="songUrlInput" placeholder="Dán link YouTube (ví dụ: https://www.youtube.com/watch?v=...)" autocomplete="off" required>
-              </div>
+          <!-- YouTube Song Search & Quick Add Section -->
+          <div class="song-search-section">
+            <div class="song-search-header">
+              <label for="songSearchInput">Tìm kiếm hoặc dán link bài hát:</label>
+            </div>
+            <div class="song-search-input-wrap">
+              <i class="ph ph-magnifying-glass song-search-icon"></i>
+              <input type="text" id="songSearchInput" placeholder="Nhập tên bài hát (ví dụ: Sơn Tùng, Lofi Chill...) hoặc link YouTube..." autocomplete="off">
+              <button type="button" class="btn-clear-song-search" id="btnClearSongSearch" style="display: none;" title="Xoá tìm kiếm">
+                <i class="ph-bold ph-x"></i>
+              </button>
             </div>
 
-            <button type="submit" class="btn-submit-add" id="btnSubmitAdd">
-              <i class="ph-bold ph-plus-circle"></i>
-              <span id="btnSubmitAddText">Thêm Vào Hàng Chờ</span>
-            </button>
-          </form>
+            <!-- Loading Spinner -->
+            <div class="yt-search-loading" id="ytSearchLoading" style="display: none;">
+              <div class="yt-spinner"></div>
+              <span>Đang tìm kiếm bài hát trên YouTube...</span>
+            </div>
+
+            <!-- YouTube Video Search Results -->
+            <div class="yt-search-results" id="ytSearchResults">
+              <!-- Result cards rendered here -->
+            </div>
+
+            <div class="song-search-tip">
+              <i class="ph-fill ph-sparkle"></i>
+              <span>Gõ tên bài hát để xem gợi ý video từ YouTube và thêm vào hàng chờ chỉ với 1 cú click!</span>
+            </div>
+          </div>
         </div>
 
         <!-- TAB CONTENT 3: User Favorites -->
@@ -397,9 +391,14 @@
           </div>
 
           <div class="fav-guest-notice" id="favGuestNotice" style="display: none;">
-            <i class="ph-fill ph-lock-key"></i>
-            <p>Vui lòng đăng nhập để lưu trữ và quản lý danh sách bài hát yêu thích của riêng bạn!</p>
-            <button class="btn-login-fav" id="btnLoginFromFav">Đăng nhập ngay</button>
+            <div class="fav-lock-icon-wrap">
+              <i class="ph-fill ph-lock-key"></i>
+            </div>
+            <p class="fav-notice-text">Vui lòng đăng nhập để lưu trữ và quản lý danh sách bài hát yêu thích của riêng bạn!</p>
+            <button class="btn-login-fav" id="btnLoginFromFav">
+              <i class="ph-bold ph-sign-in"></i>
+              <span>Đăng Nhập Ngay</span>
+            </button>
           </div>
 
           <div class="favorites-list" id="favoritesList">
@@ -474,6 +473,38 @@
           <input type="text" id="newRoomDesc" placeholder="Mô tả không gian phòng nhạc của bạn..." maxlength="200">
         </div>
 
+        <!-- Room Privacy Option -->
+        <div class="form-group">
+          <label>Chế độ truy cập phòng:</label>
+          <div class="privacy-toggle-grid">
+            <label class="privacy-radio-card active" id="labelPublicRoom">
+              <input type="radio" name="createRoomPrivacy" value="public" checked>
+              <i class="ph-fill ph-globe"></i>
+              <div class="privacy-radio-info">
+                <strong>Công Khai (Public)</strong>
+                <span>Mọi người đều có thể thấy và tham gia</span>
+              </div>
+            </label>
+            <label class="privacy-radio-card" id="labelPrivateRoom">
+              <input type="radio" name="createRoomPrivacy" value="private">
+              <i class="ph-fill ph-lock-key"></i>
+              <div class="privacy-radio-info">
+                <strong>Riêng Tư (Private)</strong>
+                <span>Khóa phòng bằng mật khẩu truy cập</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Room Password (Shown when Private is selected) -->
+        <div class="form-group" id="createRoomPasswordWrap" style="display: none;">
+          <label for="newRoomPassword">Mật khẩu phòng: <span class="required-star">*</span></label>
+          <div class="input-with-icon">
+            <i class="ph ph-lock-key"></i>
+            <input type="password" id="newRoomPassword" placeholder="Nhập mật khẩu để mở phòng..." minlength="4" maxlength="50">
+          </div>
+        </div>
+
         <!-- Cover Image Preset Picker -->
         <div class="form-group">
           <label>Chọn ảnh bìa phòng:</label>
@@ -500,6 +531,39 @@
         <button type="submit" class="btn-submit-modal" id="btnSubmitCreateRoom">
           <i class="ph-bold ph-plus-circle"></i>
           <span>Tạo Phòng & Bắt Đầu Phát Nhạc</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- MODAL: NHẬP MẬT KHẨU PHÒNG PRIVATE                   -->
+  <!-- ==================================================== -->
+  <div class="modal-backdrop" id="joinPrivateRoomModal" style="display: none;">
+    <div class="modal-card join-private-card">
+      <div class="modal-header">
+        <div class="modal-title-stack">
+          <h3 class="modal-title"><i class="ph-fill ph-lock-key" style="color: var(--accent-amber);"></i> Phòng Riêng Tư</h3>
+          <p class="modal-subtitle" id="joinPrivateRoomSub">Vui lòng nhập mật khẩu để vào phòng nhạc</p>
+        </div>
+        <button class="btn-close-modal" id="btnCloseJoinPrivateModal"><i class="ph-bold ph-x"></i></button>
+      </div>
+
+      <div class="modal-alert" id="joinPrivateAlert" style="display: none;"></div>
+
+      <form id="joinPrivateRoomForm" class="auth-form">
+        <input type="hidden" id="joinPrivateTargetSlug" value="">
+        <div class="form-group">
+          <label for="joinPrivatePasswordInput">Mật khẩu phòng:</label>
+          <div class="input-with-icon">
+            <i class="ph ph-lock-key"></i>
+            <input type="password" id="joinPrivatePasswordInput" placeholder="Nhập mật khẩu phòng..." required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit-modal" id="btnSubmitJoinPrivate">
+          <i class="ph-bold ph-sign-in"></i>
+          <span>Mở Khóa & Vào Phòng</span>
         </button>
       </form>
     </div>

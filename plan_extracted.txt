@@ -1,0 +1,10 @@
+Giao diện sảnh chính
+Danh sách các sửa đổi/ bugs:
+Vỡ giao diện đăng nhập/ đăng ký sau khi chuyển đổi giữa 2 lựa chọn.
+Loại bỏ tất cả các phòng có sẵn, bỏ vùng text “Sảnh các phòng nhạc trực tuyến” và đưa 
+tanh tìm kiếm phòng/tên chủ phòng lên bar phía trên cùng với nút tạo phòng mới cũng như đăng nhập/ đăng ký.
+Sửa lại nút đăng nhập ngay đồng bộ với web.
+Sửa đổi: thay việc thêm bài hát bằng link youtube thì cho phép điền tên của bài hát và sẽ hiện list gợi ý dựa trên dữ liệu video trên youtube.
+Bỏ đi các icon dư thừa và 
+thêm tính năng private/public cho phòng kèm theo tìm kiếm theo đường link của phòng
+Không để các tài khoản admin vào bảng xếp hạng.

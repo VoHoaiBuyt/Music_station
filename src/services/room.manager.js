@@ -479,6 +479,12 @@ class RoomInstance {
     }
   }
 
+  async verifyPassword(password) {
+    if (!this.isPrivate || !this.passwordHash) return true;
+    if (!password) return false;
+    return await bcrypt.compare(String(password), this.passwordHash);
+  }
+
   getSummary() {
     return {
       id: this.id,
@@ -490,6 +496,7 @@ class RoomInstance {
       creatorId: this.creatorId,
       creatorName: this.creatorName,
       isPrivate: this.isPrivate,
+      hasPassword: !!this.passwordHash,
       isDefault: this.isDefault,
       onlineCount: this.getOnlineCount(),
       currentTrack: this.currentTrack,
@@ -549,6 +556,7 @@ class RoomManager {
         creatorId: room.creatorId,
         creatorName: room.creatorName,
         isPrivate: room.isPrivate,
+        hasPassword: !!room.passwordHash,
         isDefault: room.isDefault,
         onlineCount: room.getOnlineCount(),
         currentTrack: room.currentTrack ? {
