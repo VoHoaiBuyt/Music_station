@@ -400,9 +400,18 @@ async function apiRequest(endpoint, options = {}) {
 
   try {
     const res = await fetch(endpoint, { ...options, headers });
-    const data = await res.json();
+    let data = {};
+    const text = await res.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = { success: false, message: `Lỗi máy chủ (${res.status}): ${text.substring(0, 120)}` };
+      }
+    }
+
     if (!res.ok) {
-      throw new Error(data.message || 'Có lỗi xảy ra trong quá trình xử lý!');
+      throw new Error(data.message || `Lỗi kết nối máy chủ (Mã lỗi ${res.status})`);
     }
     return data;
   } catch (err) {
@@ -1583,14 +1592,12 @@ function setupEventListeners() {
       if (!slug || !password) return;
 
       try {
-        const res = await fetch(`/api/rooms/${slug}/verify-password`, {
+        const res = await apiRequest(`/api/rooms/${slug}/verify-password`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password })
         });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          DOM.joinPrivateAlert.textContent = data.message || 'Mật khẩu phòng không chính xác!';
+        if (!res.success) {
+          DOM.joinPrivateAlert.textContent = res.message || 'Mật khẩu phòng không chính xác!';
           DOM.joinPrivateAlert.className = 'modal-alert error';
           DOM.joinPrivateAlert.style.display = 'block';
           return;
@@ -1599,7 +1606,7 @@ function setupEventListeners() {
         DOM.joinPrivateRoomModal.style.display = 'none';
         switchView('room', slug, password);
       } catch (err) {
-        DOM.joinPrivateAlert.textContent = 'Lỗi kết nối máy chủ!';
+        DOM.joinPrivateAlert.textContent = err.message || 'Lỗi kết nối máy chủ!';
         DOM.joinPrivateAlert.className = 'modal-alert error';
         DOM.joinPrivateAlert.style.display = 'block';
       }
